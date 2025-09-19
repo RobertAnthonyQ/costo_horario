@@ -1,0 +1,201 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+// Enums
+enum tipo_ratio_categoria {
+  Preventivo
+  Correctivo
+  Neumaticos
+  Estructural
+  Desgaste
+
+  @@map("tipo_ratio_categoria")
+}
+
+// Tablas principales
+model Marcas {
+  id         Int       @id @default(autoincrement())
+  nombre     String
+  created_at DateTime? @default(now())
+
+  // Relaciones
+  modelos Modelos[]
+
+  @@map("marcas")
+}
+
+model Equipo {
+  id         Int       @id @default(autoincrement())
+  nombre     String
+  created_at DateTime? @default(now())
+
+  // Relaciones
+  modelos Modelos[]
+
+  @@map("equipo")
+}
+
+model Flota {
+  id         Int       @id @default(autoincrement())
+  nombre     String
+  created_at DateTime? @default(now())
+
+  // Relaciones
+  modelos Modelos[]
+
+  @@map("flota")
+}
+
+model Componentes {
+  id     Int    @id @default(autoincrement())
+  nombre String
+
+  // Relaciones
+  modelo_componentes_historico ModeloComponentesHistorico[]
+
+  @@map("componentes")
+}
+
+model TiposRatio {
+  id         Int                  @id @default(autoincrement())
+  nombre     String
+  categoria  tipo_ratio_categoria?
+  created_at DateTime?            @default(now())
+
+  // Relaciones
+  ratios_historico RatiosHistorico[]
+
+  @@map("tipos_ratio")
+}
+
+model Modelos {
+  id                     Int     @id @default(autoincrement())
+  nombre                 String
+  marca_id               Int
+  equipo_id              Int?
+  flota_id               Int?
+  porcentaje_utilidad    Float   @default(0)
+  vida_util_fabricante   Int?
+  created_at             DateTime? @default(now())
+
+  // Relaciones
+  marca                           Marcas                       @relation(fields: [marca_id], references: [id])
+  equipo                          Equipo?                      @relation(fields: [equipo_id], references: [id])
+  flota                           Flota?                       @relation(fields: [flota_id], references: [id])
+  machines                        Machines[]
+  modelo_componentes_historico    ModeloComponentesHistorico[]
+  ratios_historico                RatiosHistorico[]
+
+  @@map("modelos")
+}
+
+model Machines {
+  id                     Int       @id @default(autoincrement())
+  modelo_id              Int?
+  estado                 String?
+  horometro_inicial      Int?
+  id_equipo_interno      String?
+  link_imagen            String?
+  politica_depreciacion  Int?
+  tiempo_entrega         Int?
+  valor_similar_nuevo    Decimal?  @db.Decimal
+  valor_venta            Decimal?  @db.Decimal
+  vida_util              Int?
+  otros_json             Json?
+  created_at             DateTime? @default(now())
+
+  // Relaciones
+  modelo                 Modelos?             @relation(fields: [modelo_id], references: [id])
+  informe_costo_horario  InformeCostoHorario[]
+  posesion_historial     PosesionHistorial[]
+
+  @@map("machines")
+}
+
+model Users {
+  id          String  @id
+  full_name   String?
+  avatar_url  String?
+
+  // Relaciones
+  informe_costo_horario InformeCostoHorario[]
+  posesion_historial    PosesionHistorial[]
+
+  @@map("users")
+}
+
+// Tablas de historial y relaciones
+model ModeloComponentesHistorico {
+  id              Int      @id @default(autoincrement())
+  modelo_id       Int
+  componente_id   Int
+  monto_usd       Decimal? @db.Decimal(10, 2)
+  pcr             Decimal? @db.Decimal(10, 2)
+  fecha_efectiva  DateTime
+
+  // Relaciones
+  modelo     Modelos     @relation(fields: [modelo_id], references: [id])
+  componente Componentes @relation(fields: [componente_id], references: [id])
+
+  @@map("modelo_componentes_historico")
+}
+
+model RatiosHistorico {
+  id              Int      @id @default(autoincrement())
+  modelo_id       Int
+  tipo_ratio_id   Int
+  valor           Float?
+  fecha_efectiva  DateTime
+
+  // Relaciones
+  modelo     Modelos    @relation(fields: [modelo_id], references: [id])
+  tipo_ratio TiposRatio @relation(fields: [tipo_ratio_id], references: [id])
+
+  @@map("ratios_historico")
+}
+
+model InformeCostoHorario {
+  id                        Int      @id @default(autoincrement())
+  machine_id                Int
+  usuario_id                String?
+  resultado_completo_json   Json
+  escenarios_horas          Json?
+  tasa_financiamiento_usada Float?
+  anios_financiamiento      Int?
+  tasa_seguro_usada         Float?
+  anios_seguro              Int?
+  mes_por_anio              Int?
+  fecha_calculo             DateTime? @default(now())
+
+  // Relaciones
+  machine Machines @relation(fields: [machine_id], references: [id])
+  usuario Users?   @relation(fields: [usuario_id], references: [id])
+
+  @@map("informe_costo_horario")
+}
+
+model PosesionHistorial {
+  id               Int      @id @default(autoincrement())
+  machine_id       Int
+  usuario_id       String?
+  resultados_json  Json?
+  horas_json       Json?
+  comentario       String?
+  fecha_calculo    DateTime? @default(now())
+
+  // Relaciones
+  machine Machines @relation(fields: [machine_id], references: [id])
+  usuario Users?   @relation(fields: [usuario_id], references: [id])
+
+  @@map("posesion_historial")
+}
