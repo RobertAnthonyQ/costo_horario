@@ -5,3 +5,5 @@ export { Comments } from "./Comments";
 export { QuickStats } from "./QuickStats";
 export { DepreciationChart } from "./DepreciationChart";
 export { ScenarioResults } from "./ScenarioResults";
+export { IndividualResultsTable } from "./IndividualResultsTable";
+export { default as PossessionTable } from "./PossessionTable";

@@ -3,6 +3,13 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
   Dialog,
   DialogContent,
   DialogHeader,
@@ -55,9 +62,10 @@ interface CrudTableProps<T extends CrudTableItem> {
   formFields: {
     key: keyof T;
     label: string;
-    type: "text" | "number";
+    type: "text" | "number" | "select";
     required?: boolean;
     placeholder?: string;
+    options?: { value: string; label: string }[];
   }[];
 }
 
@@ -175,16 +183,42 @@ export function CrudTable<T extends CrudTableItem>({
                         <span className="text-red-500 ml-1">*</span>
                       )}
                     </Label>
-                    <Input
-                      id={field.key as string}
-                      type={field.type}
-                      value={formData[field.key] || ""}
-                      onChange={(e) =>
-                        handleInputChange(field.key, e.target.value)
-                      }
-                      placeholder={field.placeholder}
-                      required={field.required}
-                    />
+                    {field.type === "select" ? (
+                      <Select
+                        value={(formData[field.key] as string) || "EMPTY_VALUE"}
+                        onValueChange={(value) => {
+                          // Si el valor es "EMPTY_VALUE", enviamos string vacío
+                          const finalValue =
+                            value === "EMPTY_VALUE" ? "" : value;
+                          handleInputChange(field.key, finalValue);
+                        }}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder={field.placeholder} />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {field.options?.map((option) => (
+                            <SelectItem
+                              key={option.value || "EMPTY_VALUE"}
+                              value={option.value || "EMPTY_VALUE"}
+                            >
+                              {option.label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    ) : (
+                      <Input
+                        id={field.key as string}
+                        type={field.type}
+                        value={formData[field.key] || ""}
+                        onChange={(e) =>
+                          handleInputChange(field.key, e.target.value)
+                        }
+                        placeholder={field.placeholder}
+                        required={field.required}
+                      />
+                    )}
                   </div>
                 ))}
 

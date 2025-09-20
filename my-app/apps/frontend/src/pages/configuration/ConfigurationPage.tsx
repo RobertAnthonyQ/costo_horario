@@ -7,12 +7,20 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Settings, Package, Truck, Factory, Wrench } from "lucide-react";
+import {
+  Settings,
+  Package,
+  Truck,
+  Factory,
+  Wrench,
+  BarChart3,
+} from "lucide-react";
 import {
   MarcasManagement,
   EquiposManagement,
   FlotasManagement,
   ComponentesManagement,
+  TiposRatioManagement,
 } from "./components";
 
 export const ConfigurationPage: React.FC = () => {
@@ -29,8 +37,8 @@ export const ConfigurationPage: React.FC = () => {
         <CardHeader>
           <CardTitle>Gestión de Datos Maestros</CardTitle>
           <CardDescription>
-            Configure y administre las marcas, equipos, flotas y componentes de
-            su sistema
+            Configure y administre las marcas, equipos, flotas, componentes y
+            tipos de ratio de su sistema
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -39,7 +47,7 @@ export const ConfigurationPage: React.FC = () => {
             onValueChange={setActiveTab}
             className="space-y-4"
           >
-            <TabsList className="grid w-full grid-cols-4">
+            <TabsList className="grid w-full grid-cols-5">
               <TabsTrigger
                 value="marcas"
                 className="flex items-center space-x-2"
@@ -68,6 +76,13 @@ export const ConfigurationPage: React.FC = () => {
                 <Wrench className="h-4 w-4" />
                 <span>Componentes</span>
               </TabsTrigger>
+              <TabsTrigger
+                value="tipos-ratio"
+                className="flex items-center space-x-2"
+              >
+                <BarChart3 className="h-4 w-4" />
+                <span>Tipos Ratio</span>
+              </TabsTrigger>
             </TabsList>
 
             <TabsContent value="marcas" className="space-y-4">
@@ -84,6 +99,10 @@ export const ConfigurationPage: React.FC = () => {
 
             <TabsContent value="componentes" className="space-y-4">
               <ComponentesManagement />
+            </TabsContent>
+
+            <TabsContent value="tipos-ratio" className="space-y-4">
+              <TiposRatioManagement />
             </TabsContent>
           </Tabs>
         </CardContent>
