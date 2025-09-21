@@ -14,7 +14,6 @@ import {
   TrendingUp,
   History,
   ChevronDown,
-  ChevronRight
 } from "lucide-react";
 
 import {
@@ -29,11 +28,13 @@ import {
   SidebarTrigger,
   useSidebar,
 } from "@/components/ui/sidebar";
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
 
-const mainItems = [
-  { title: "Dashboard", url: "/", icon: Home },
-];
+const mainItems = [{ title: "Dashboard", url: "/", icon: Home }];
 
 const assetItems = [
   { title: "Máquinas", url: "/machines", icon: Truck },
@@ -42,8 +43,13 @@ const assetItems = [
 
 const calculationItems = [
   { title: "Cálculo de Posesión", url: "/possession", icon: Calculator },
+  { title: "Ratios", url: "/ratios", icon: BarChart3 },
   { title: "Informe Costo Horario", url: "/hourly-cost", icon: TrendingUp },
-  { title: "Historial de Cálculos", url: "/calculation-history", icon: History },
+  {
+    title: "Historial de Cálculos",
+    url: "/calculation-history",
+    icon: History,
+  },
 ];
 
 const reportItems = [
@@ -61,7 +67,12 @@ interface MenuGroupProps {
   defaultOpen?: boolean;
 }
 
-function MenuGroup({ title, items, isCollapsible = false, defaultOpen = true }: MenuGroupProps) {
+function MenuGroup({
+  title,
+  items,
+  isCollapsible = false,
+  defaultOpen = true,
+}: MenuGroupProps) {
   const [isOpen, setIsOpen] = useState(defaultOpen);
   const { state } = useSidebar();
   const location = useLocation();
@@ -102,9 +113,7 @@ function MenuGroup({ title, items, isCollapsible = false, defaultOpen = true }: 
               <ChevronDown className="ml-auto transition-transform group-data-[state=open]/label:rotate-180 h-4 w-4" />
             </SidebarGroupLabel>
           </CollapsibleTrigger>
-          <CollapsibleContent>
-            {content}
-          </CollapsibleContent>
+          <CollapsibleContent>{content}</CollapsibleContent>
         </SidebarGroup>
       </Collapsible>
     );
@@ -138,8 +147,18 @@ export function AppSidebar() {
 
       <SidebarContent>
         <MenuGroup title="Principal" items={mainItems} />
-        <MenuGroup title="Gestión de Activos" items={assetItems} isCollapsible defaultOpen />
-        <MenuGroup title="Cálculos Financieros" items={calculationItems} isCollapsible defaultOpen />
+        <MenuGroup
+          title="Gestión de Activos"
+          items={assetItems}
+          isCollapsible
+          defaultOpen
+        />
+        <MenuGroup
+          title="Cálculos Financieros"
+          items={calculationItems}
+          isCollapsible
+          defaultOpen
+        />
         <MenuGroup title="Reportes" items={reportItems} />
         <MenuGroup title="Sistema" items={configItems} />
       </SidebarContent>

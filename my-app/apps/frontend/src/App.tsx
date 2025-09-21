@@ -4,7 +4,14 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AppLayout } from "./components/layout/app-layout";
-import { Dashboard, Machines, PossessionCalculation, NotFound } from "./pages";
+import {
+  Dashboard,
+  Machines,
+  PossessionCalculation,
+  RatiosCalculation,
+  HourlyCostReport,
+  NotFound,
+} from "./pages";
 import { ConfigurationPage } from "./pages/configuration";
 
 const queryClient = new QueryClient();
@@ -25,14 +32,9 @@ const App = () => (
             <Route path="/settings" element={<ConfigurationPage />} />
             <Route path="/configuration" element={<ConfigurationPage />} />
             <Route path="/possession" element={<PossessionCalculation />} />
-            <Route
-              path="/hourly-cost"
-              element={
-                <div className="p-8 text-center text-muted-foreground">
-                  Informe Costo Horario - Próximamente
-                </div>
-              }
-            />
+            <Route path="/ratios" element={<RatiosCalculation />} />
+            <Route path="/ratios/compare" element={<RatiosCalculation />} />
+            <Route path="/hourly-cost" element={<HourlyCostReport />} />
             <Route
               path="/calculation-history"
               element={
