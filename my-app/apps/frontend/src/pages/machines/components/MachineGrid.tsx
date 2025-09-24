@@ -88,15 +88,9 @@ export const MachineGrid = ({
                 {machine.modelo?.nombre || "Modelo N/A"}
               </p>
               <div className="flex justify-between items-center text-sm">
-                <span className="text-muted-foreground">Flota:</span>
+                <span className="text-muted-foreground">Equipo:</span>
                 <span className="font-medium">
-                  {machine.modelo?.flota?.nombre || "N/A"}
-                </span>
-              </div>
-              <div className="flex justify-between items-center text-sm">
-                <span className="text-muted-foreground">Valor de Venta:</span>
-                <span className="font-semibold text-primary">
-                  {formatCurrency(machine.valor_venta)}
+                  {machine.modelo?.equipo?.nombre || "N/A"}
                 </span>
               </div>
               <div className="flex justify-between items-center text-sm">
@@ -111,9 +105,9 @@ export const MachineGrid = ({
               </div>
               <div className="flex justify-between items-center text-sm">
                 <span className="text-muted-foreground">
-                  Valor Similar Nuevo:
+                  Valor de Adquisición:
                 </span>
-                <span className="font-medium">
+                <span className="font-semibold text-primary">
                   {formatCurrency(machine.valor_similar_nuevo)}
                 </span>
               </div>

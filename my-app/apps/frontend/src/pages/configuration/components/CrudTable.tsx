@@ -55,8 +55,8 @@ interface CrudTableProps<T extends CrudTableItem> {
   columns: CrudTableColumn[];
   loading: boolean;
   error?: string;
-  onAdd: (item: Omit<T, "id" | "created_at">) => Promise<void>;
-  onEdit: (id: number, item: Partial<T>) => Promise<void>;
+  onAdd: (item: any) => Promise<void>;
+  onEdit: (id: number, item: any) => Promise<void>;
   onDelete: (id: number) => Promise<void>;
   onRefresh: () => Promise<void>;
   formFields: {
@@ -84,7 +84,7 @@ export function CrudTable<T extends CrudTableItem>({
 }: CrudTableProps<T>) {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<T | null>(null);
-  const [formData, setFormData] = useState<Partial<T>>({});
+  const [formData, setFormData] = useState<any>({});
   const [searchTerm, setSearchTerm] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [formError, setFormError] = useState("");
@@ -119,7 +119,7 @@ export function CrudTable<T extends CrudTableItem>({
       if (editingItem) {
         await onEdit(editingItem.id, formData);
       } else {
-        await onAdd(formData as Omit<T, "id" | "created_at">);
+        await onAdd(formData);
       }
       setIsDialogOpen(false);
       resetForm();

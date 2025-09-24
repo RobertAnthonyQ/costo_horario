@@ -19,7 +19,6 @@ import {
   Machine,
   Marca,
   Equipo,
-  Flota,
 } from "../models/types";
 import { relationsService } from "../services/relationsService";
 
@@ -27,7 +26,6 @@ interface MachineFormData extends Omit<CreateMachineDto, "modelo_id"> {
   // Campos para crear el modelo
   marca_id?: number;
   equipo_id?: number;
-  flota_id?: number;
   modelo_nombre?: string;
   porcentaje_utilidad?: number;
   vida_util_fabricante?: number;
@@ -62,7 +60,6 @@ export const MachineForm: React.FC<MachineFormProps> = ({
     // Campos para el modelo
     marca_id: undefined,
     equipo_id: undefined,
-    flota_id: undefined,
     modelo_nombre: "",
     porcentaje_utilidad: 0.1, // 10% por defecto
     vida_util_fabricante: undefined,
@@ -73,7 +70,6 @@ export const MachineForm: React.FC<MachineFormProps> = ({
   // Estados para las opciones
   const [marcas, setMarcas] = useState<Marca[]>([]);
   const [equipos, setEquipos] = useState<Equipo[]>([]);
-  const [flotas, setFlotas] = useState<Flota[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string>("");
   const [uploading, setUploading] = useState(false);
@@ -82,9 +78,11 @@ export const MachineForm: React.FC<MachineFormProps> = ({
   // Cargar datos iniciales
   useEffect(() => {
     loadRelations();
+  }, []);
 
-    // Si es edición, llenar el formulario con los datos existentes
-    if (machine) {
+  // Efecto separado para cargar datos del modelo cuando se tienen las relaciones y la máquina
+  useEffect(() => {
+    if (machine && marcas.length > 0 && equipos.length > 0) {
       setFormData({
         estado: machine.estado || "Capex_Nuevo",
         horometro_inicial: machine.horometro_inicial,
@@ -98,7 +96,6 @@ export const MachineForm: React.FC<MachineFormProps> = ({
         // Para edición, extraer datos del modelo existente
         marca_id: machine.modelo?.marca_id,
         equipo_id: machine.modelo?.equipo_id,
-        flota_id: machine.modelo?.flota_id,
         modelo_nombre: machine.modelo?.nombre || "",
         porcentaje_utilidad: machine.modelo?.porcentaje_utilidad || 0.1,
         vida_util_fabricante: machine.modelo?.vida_util_fabricante,
@@ -107,17 +104,16 @@ export const MachineForm: React.FC<MachineFormProps> = ({
           : "",
       });
     }
-  }, [machine]);
+  }, [machine, marcas, equipos]);
 
   const loadRelations = async () => {
     setLoading(true);
     setError("");
 
     try {
-      const [marcasRes, equiposRes, flotasRes] = await Promise.all([
+      const [marcasRes, equiposRes] = await Promise.all([
         relationsService.getMarcas(),
         relationsService.getEquipos(),
-        relationsService.getFlotas(),
       ]);
 
       if (marcasRes.success && marcasRes.data) {
@@ -128,11 +124,7 @@ export const MachineForm: React.FC<MachineFormProps> = ({
         setEquipos(equiposRes.data);
       }
 
-      if (flotasRes.success && flotasRes.data) {
-        setFlotas(flotasRes.data);
-      }
-
-      if (!marcasRes.success || !equiposRes.success || !flotasRes.success) {
+      if (!marcasRes.success || !equiposRes.success) {
         setError("Error al cargar algunas opciones");
       }
     } catch (error: any) {
@@ -175,10 +167,6 @@ export const MachineForm: React.FC<MachineFormProps> = ({
       setError("Debe seleccionar un equipo");
       return;
     }
-    if (!formData.flota_id) {
-      setError("Debe seleccionar una flota");
-      return;
-    }
     if (!formData.modelo_nombre?.trim()) {
       setError("Debe ingresar un nombre para el modelo");
       return;
@@ -204,24 +192,34 @@ export const MachineForm: React.FC<MachineFormProps> = ({
         politica_depreciacion: formData.politica_depreciacion,
         tiempo_entrega: formData.tiempo_entrega,
         valor_similar_nuevo: formData.valor_similar_nuevo,
-        valor_venta: formData.valor_venta,
+        // Asignar automáticamente el valor_similar_nuevo al valor_venta
+        valor_venta: formData.valor_similar_nuevo,
         // Aplicar la misma vida útil unificada en horas tanto a la máquina como al modelo
         vida_util: formData.vida_util_fabricante, // Mantener en horas
         otros_json,
-        // Incluir datos del modelo para que el backend pueda crearlo
+        // Incluir datos del modelo para que el backend pueda crearlo o actualizarlo
         ...(!machine && {
           // Solo para creación, incluir datos del modelo
           modelo_data: {
             nombre: formData.modelo_nombre,
             marca_id: formData.marca_id,
             equipo_id: formData.equipo_id,
-            flota_id: formData.flota_id,
             porcentaje_utilidad: formData.porcentaje_utilidad,
             vida_util_fabricante: formData.vida_util_fabricante, // Vida útil en horas para el fabricante
           },
         }),
-        // Para edición, usar el modelo_id existente
-        ...(machine && { modelo_id: machine.modelo_id }),
+        // Para edición, usar el modelo_id existente e incluir datos del modelo para actualizar
+        ...(machine && {
+          modelo_id: machine.modelo_id,
+          // Incluir datos del modelo para actualización (si el backend lo soporta)
+          modelo_data: {
+            nombre: formData.modelo_nombre,
+            marca_id: formData.marca_id,
+            equipo_id: formData.equipo_id,
+            porcentaje_utilidad: formData.porcentaje_utilidad,
+            vida_util_fabricante: formData.vida_util_fabricante,
+          },
+        }),
       };
 
       await onSubmit(machineData);
@@ -288,14 +286,7 @@ export const MachineForm: React.FC<MachineFormProps> = ({
   const isEditing = !!machine;
 
   // Estados disponibles
-  const ESTADOS_DISPONIBLES = [
-    "Capex_Nuevo",
-    "activo",
-    "mantenimiento",
-    "inactivo",
-    "fuera_servicio",
-    "en_reparacion",
-  ];
+  const ESTADOS_DISPONIBLES = ["Capex_Nuevo", "Capex_Usado"];
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
@@ -306,169 +297,135 @@ export const MachineForm: React.FC<MachineFormProps> = ({
         </Alert>
       )}
 
-      {/* Datos del Modelo - Solo visible en creación */}
-      {!isEditing && (
-        <>
-          <div className="border-b pb-4">
-            <h3 className="text-lg font-medium">Información del Modelo</h3>
-            <p className="text-sm text-muted-foreground">
-              Este modelo se creará automáticamente para esta máquina
-            </p>
-          </div>
+      {/* Datos del Modelo */}
+      <div className="border-b pb-4">
+        <h3 className="text-lg font-medium">Información del Modelo</h3>
+        <p className="text-sm text-muted-foreground">
+          {isEditing
+            ? "Modifica la información del modelo de esta máquina"
+            : "Este modelo se creará automáticamente para esta máquina"}
+        </p>
+      </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            {/* Marca */}
-            <div className="space-y-2">
-              <Label htmlFor="marca_id">Marca *</Label>
-              <Select
-                value={formData.marca_id ? formData.marca_id.toString() : ""}
-                onValueChange={(value) =>
-                  handleInputChange("marca_id", Number(value))
-                }
-                disabled={loading}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {/* Marca */}
+        <div className="space-y-2">
+          <Label htmlFor="marca_id">Marca *</Label>
+          <Select
+            value={formData.marca_id ? formData.marca_id.toString() : ""}
+            onValueChange={(value) =>
+              handleInputChange("marca_id", Number(value))
+            }
+            disabled={loading}
+          >
+            <SelectTrigger>
+              <SelectValue
+                placeholder={loading ? "Cargando..." : "Selecciona una marca"}
               >
-                <SelectTrigger>
-                  <SelectValue
-                    placeholder={
-                      loading ? "Cargando..." : "Selecciona una marca"
-                    }
-                  />
-                </SelectTrigger>
-                <SelectContent>
-                  {marcas.map((marca) => (
-                    <SelectItem key={marca.id} value={marca.id.toString()}>
-                      {marca.nombre}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+                {formData.marca_id && marcas.length > 0
+                  ? marcas.find((m) => m.id === formData.marca_id)?.nombre ||
+                    "Marca seleccionada"
+                  : loading
+                    ? "Cargando..."
+                    : "Selecciona una marca"}
+              </SelectValue>
+            </SelectTrigger>
+            <SelectContent>
+              {marcas.map((marca) => (
+                <SelectItem key={marca.id} value={marca.id.toString()}>
+                  {marca.nombre}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
 
-            {/* Equipo */}
-            <div className="space-y-2">
-              <Label htmlFor="equipo_id">Equipo *</Label>
-              <Select
-                value={formData.equipo_id ? formData.equipo_id.toString() : ""}
-                onValueChange={(value) =>
-                  handleInputChange("equipo_id", Number(value))
-                }
-                disabled={loading}
+        {/* Equipo */}
+        <div className="space-y-2">
+          <Label htmlFor="equipo_id">Equipo *</Label>
+          <Select
+            value={formData.equipo_id ? formData.equipo_id.toString() : ""}
+            onValueChange={(value) =>
+              handleInputChange("equipo_id", Number(value))
+            }
+            disabled={loading}
+          >
+            <SelectTrigger>
+              <SelectValue
+                placeholder={loading ? "Cargando..." : "Selecciona un equipo"}
               >
-                <SelectTrigger>
-                  <SelectValue
-                    placeholder={
-                      loading ? "Cargando..." : "Selecciona un equipo"
-                    }
-                  />
-                </SelectTrigger>
-                <SelectContent>
-                  {equipos.map((equipo) => (
-                    <SelectItem key={equipo.id} value={equipo.id.toString()}>
-                      {equipo.nombre}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+                {formData.equipo_id && equipos.length > 0
+                  ? equipos.find((e) => e.id === formData.equipo_id)?.nombre ||
+                    "Equipo seleccionado"
+                  : loading
+                    ? "Cargando..."
+                    : "Selecciona un equipo"}
+              </SelectValue>
+            </SelectTrigger>
+            <SelectContent>
+              {equipos.map((equipo) => (
+                <SelectItem key={equipo.id} value={equipo.id.toString()}>
+                  {equipo.nombre}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      </div>
 
-            {/* Flota */}
-            <div className="space-y-2">
-              <Label htmlFor="flota_id">Flota *</Label>
-              <Select
-                value={formData.flota_id ? formData.flota_id.toString() : ""}
-                onValueChange={(value) =>
-                  handleInputChange("flota_id", Number(value))
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        {/* Nombre del modelo */}
+        <div className="space-y-2">
+          <Label htmlFor="modelo_nombre">Nombre del Modelo *</Label>
+          <Input
+            id="modelo_nombre"
+            value={formData.modelo_nombre || ""}
+            onChange={(e) => handleInputChange("modelo_nombre", e.target.value)}
+            placeholder="Ej: CAT320D, PC200-8"
+            required
+          />
+        </div>
+
+        {/* Porcentaje de utilidad */}
+        <div className="space-y-2">
+          <Label htmlFor="porcentaje_utilidad">Porcentaje de Utilidad</Label>
+          <Input
+            id="porcentaje_utilidad"
+            type="text"
+            value={formData.porcentaje_utilidad?.toString() || ""}
+            onChange={(e) => {
+              const value = e.target.value;
+              if (value === "") {
+                handleInputChange("porcentaje_utilidad", undefined);
+              } else {
+                const numValue = parseFloat(value);
+                if (!isNaN(numValue)) {
+                  handleInputChange("porcentaje_utilidad", numValue);
                 }
-                disabled={loading}
-              >
-                <SelectTrigger>
-                  <SelectValue
-                    placeholder={
-                      loading ? "Cargando..." : "Selecciona una flota"
-                    }
-                  />
-                </SelectTrigger>
-                <SelectContent>
-                  {flotas.map((flota) => (
-                    <SelectItem key={flota.id} value={flota.id.toString()}>
-                      {flota.nombre}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
+              }
+            }}
+            placeholder="0.10"
+          />
+        </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            {/* Nombre del modelo */}
-            <div className="space-y-2">
-              <Label htmlFor="modelo_nombre">Nombre del Modelo *</Label>
-              <Input
-                id="modelo_nombre"
-                value={formData.modelo_nombre || ""}
-                onChange={(e) =>
-                  handleInputChange("modelo_nombre", e.target.value)
-                }
-                placeholder="Ej: CAT320D, PC200-8"
-                required
-              />
-            </div>
-
-            {/* Porcentaje de utilidad */}
-            <div className="space-y-2">
-              <Label htmlFor="porcentaje_utilidad">
-                Porcentaje de Utilidad
-              </Label>
-              <Input
-                id="porcentaje_utilidad"
-                type="text"
-                value={formData.porcentaje_utilidad?.toString() || ""}
-                onChange={(e) => {
-                  const value = e.target.value;
-                  if (value === "") {
-                    handleInputChange("porcentaje_utilidad", undefined);
-                  } else {
-                    const numValue = parseFloat(value);
-                    if (!isNaN(numValue)) {
-                      handleInputChange("porcentaje_utilidad", numValue);
-                    }
-                  }
-                }}
-                placeholder="0.10"
-              />
-            </div>
-
-            {/* Vida útil unificada */}
-            <div className="space-y-2">
-              <Label htmlFor="vida_util_unificada">Vida Útil (horas)</Label>
-              <Input
-                id="vida_util_unificada"
-                type="number"
-                min="0"
-                value={formData.vida_util_fabricante || ""}
-                onChange={(e) =>
-                  handleNumberChange("vida_util_fabricante", e.target.value)
-                }
-                placeholder="Ej: 30000"
-              />
-              <p className="text-xs text-muted-foreground">
-                Se aplicará tanto al modelo como a la máquina
-              </p>
-            </div>
-          </div>
-        </>
-      )}
-
-      {/* Información del modelo en modo edición */}
-      {isEditing && machine?.modelo && (
-        <div className="border-b pb-4">
-          <h3 className="text-lg font-medium">Modelo Actual</h3>
-          <p className="text-sm text-muted-foreground">
-            {machine.modelo.marca?.nombre} {machine.modelo.nombre} -{" "}
-            {machine.modelo.equipo?.nombre} ({machine.modelo.flota?.nombre})
+        {/* Vida útil unificada */}
+        <div className="space-y-2">
+          <Label htmlFor="vida_util_unificada">Vida Útil (horas)</Label>
+          <Input
+            id="vida_util_unificada"
+            type="number"
+            min="0"
+            value={formData.vida_util_fabricante || ""}
+            onChange={(e) =>
+              handleNumberChange("vida_util_fabricante", e.target.value)
+            }
+            placeholder="Ej: 30000"
+          />
+          <p className="text-xs text-muted-foreground">
+            Se aplicará tanto al modelo como a la máquina
           </p>
         </div>
-      )}
+      </div>
 
       {/* Datos de la Máquina */}
       <div className="border-b pb-4">
@@ -513,9 +470,11 @@ export const MachineForm: React.FC<MachineFormProps> = ({
       </div>
 
       {/* Valores financieros */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 gap-4">
         <div className="space-y-2">
-          <Label htmlFor="valor_similar_nuevo">Valor similar nuevo (USD)</Label>
+          <Label htmlFor="valor_similar_nuevo">
+            Valor de adquisición (USD)
+          </Label>
           <Input
             id="valor_similar_nuevo"
             type="number"
@@ -526,19 +485,6 @@ export const MachineForm: React.FC<MachineFormProps> = ({
               handleNumberChange("valor_similar_nuevo", e.target.value)
             }
             placeholder="Ej: 100000"
-          />
-        </div>
-
-        <div className="space-y-2">
-          <Label htmlFor="valor_venta">Valor de venta (USD)</Label>
-          <Input
-            id="valor_venta"
-            type="number"
-            min="0"
-            step="0.01"
-            value={formData.valor_venta ?? ""}
-            onChange={(e) => handleNumberChange("valor_venta", e.target.value)}
-            placeholder="Ej: 80000"
           />
         </div>
       </div>

@@ -62,10 +62,9 @@ export const MachineTable = ({
           <TableHead>Marca</TableHead>
           <TableHead>Nombre</TableHead>
           <TableHead>Modelo</TableHead>
-          <TableHead>Flota</TableHead>
-          <TableHead>Valor de Venta</TableHead>
+          <TableHead>Equipo</TableHead>
           <TableHead>Tiempo de Entrega</TableHead>
-          <TableHead>Valor Similar Nuevo</TableHead>
+          <TableHead>Valor de Adquisición</TableHead>
           <TableHead>Vida Útil del Fabricante</TableHead>
           <TableHead className="w-[50px]"></TableHead>
         </TableRow>
@@ -80,16 +79,15 @@ export const MachineTable = ({
               {machine.modelo?.equipo?.nombre || "N/A"}
             </TableCell>
             <TableCell>{machine.modelo?.nombre || "N/A"}</TableCell>
-            <TableCell>{machine.modelo?.flota?.nombre || "N/A"}</TableCell>
-            <TableCell className="font-semibold text-primary">
-              {formatCurrency(machine.valor_venta)}
-            </TableCell>
+            <TableCell>{machine.modelo?.equipo?.nombre || "N/A"}</TableCell>
             <TableCell>
               {machine.tiempo_entrega
                 ? `${machine.tiempo_entrega} meses`
                 : "N/A"}
             </TableCell>
-            <TableCell>{formatCurrency(machine.valor_similar_nuevo)}</TableCell>
+            <TableCell className="font-semibold text-primary">
+              {formatCurrency(machine.valor_similar_nuevo)}
+            </TableCell>
             <TableCell>
               {machine.modelo?.vida_util_fabricante
                 ? `${machine.modelo.vida_util_fabricante.toLocaleString()} hrs`

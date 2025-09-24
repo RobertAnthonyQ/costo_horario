@@ -35,15 +35,43 @@ export const TiposRatioManagement: React.FC = () => {
     loadTiposRatio();
   }, []);
 
-  const handleAdd = async (data: CreateTipoRatioDto) => {
-    const response = await tiposRatioService.createTipoRatio(data);
+  const handleAdd = async (data: any) => {
+    // Filtrar propiedades vacías y campos no válidos
+    const cleanData: CreateTipoRatioDto = {
+      nombre: data.nombre.trim(),
+    };
+
+    if (
+      data.categoria &&
+      data.categoria !== "" &&
+      data.categoria !== "EMPTY_VALUE"
+    ) {
+      cleanData.categoria = data.categoria;
+    }
+
+    const response = await tiposRatioService.createTipoRatio(cleanData);
     if (!response.success) {
       throw new Error(response.error || "Error al crear tipo de ratio");
     }
   };
 
-  const handleEdit = async (id: number, data: UpdateTipoRatioDto) => {
-    const response = await tiposRatioService.updateTipoRatio(id, data);
+  const handleEdit = async (id: number, data: any) => {
+    // Filtrar propiedades vacías y campos no válidos
+    const cleanData: UpdateTipoRatioDto = {};
+
+    if (data.nombre && data.nombre.trim() !== "") {
+      cleanData.nombre = data.nombre.trim();
+    }
+
+    if (
+      data.categoria &&
+      data.categoria !== "" &&
+      data.categoria !== "EMPTY_VALUE"
+    ) {
+      cleanData.categoria = data.categoria;
+    }
+
+    const response = await tiposRatioService.updateTipoRatio(id, cleanData);
     if (!response.success) {
       throw new Error(response.error || "Error al actualizar tipo de ratio");
     }

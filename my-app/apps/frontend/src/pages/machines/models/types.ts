@@ -68,7 +68,6 @@ export interface CreateMachineDto {
     nombre: string;
     marca_id: number;
     equipo_id?: number;
-    flota_id?: number;
     porcentaje_utilidad: number;
     vida_util_fabricante?: number;
   };
