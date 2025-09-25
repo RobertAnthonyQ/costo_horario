@@ -5,9 +5,13 @@ import {
   IsPositive,
   IsOptional,
   IsDateString,
+  IsString,
+  IsObject,
+  ValidateNested,
 } from 'class-validator';
 import { Type, Transform } from 'class-transformer';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import type { RatiosVersion } from '../interfaces/ratios-version.interface';
 
 export class CreateRatiosHistoricoDto {
   @ApiProperty({
@@ -57,4 +61,40 @@ export class CreateRatiosHistoricoDto {
     return value;
   })
   fecha_efectiva: string;
+
+  @ApiPropertyOptional({
+    description:
+      'OPCIONAL: Versión completa de ratios en formato JSON. Solo se guarda si lo envías explícitamente. NO se genera automáticamente.',
+    example: {
+      fecha_efectiva: '2025-09-15T12:00:00.000Z',
+      ratios: [
+        {
+          tipo_ratio_id: 1,
+          tipo_ratio_nombre: 'Disponibilidad',
+          valor: 0.85,
+          categoria: 'Preventivo',
+        },
+        {
+          tipo_ratio_id: 2,
+          tipo_ratio_nombre: 'Utilización',
+          valor: 0.75,
+          categoria: 'Correctivo',
+        },
+      ],
+      comentario: 'Versión actualizada tras mantenimiento',
+      usuario_id: 'user123',
+    },
+  })
+  @IsOptional()
+  @IsObject({ message: 'ratios_version debe ser un objeto JSON válido' })
+  ratios_version?: RatiosVersion;
+
+  @ApiPropertyOptional({
+    description: 'Lugar de operación donde se registra el ratio',
+    example: 'Mina Norte - Sector A',
+    type: String,
+  })
+  @IsOptional()
+  @IsString({ message: 'lugar_operacion debe ser una cadena de texto' })
+  lugar_operacion?: string;
 }

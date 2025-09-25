@@ -151,11 +151,13 @@ model ModeloComponentesHistorico {
 }
 
 model RatiosHistorico {
-  id              Int      @id @default(autoincrement())
-  modelo_id       Int
-  tipo_ratio_id   Int
-  valor           Float?
-  fecha_efectiva  DateTime
+  id               Int      @id @default(autoincrement())
+  modelo_id        Int
+  tipo_ratio_id    Int
+  valor            Float?
+  fecha_efectiva   DateTime
+  ratios_version   Json?
+  lugar_operacion  String?
 
   // Relaciones
   modelo     Modelos    @relation(fields: [modelo_id], references: [id])

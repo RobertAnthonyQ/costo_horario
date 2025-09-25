@@ -110,6 +110,24 @@ export default function MachineAndRatioSelection({
             Se usará la fecha actual automáticamente
           </div>
         </div>
+
+        <div>
+          <Label>Lugar de operación (opcional)</Label>
+          <Input
+            type="text"
+            placeholder="Ej: Mina Norte - Sector A"
+            value={input.lugar_operacion || ""}
+            onChange={(e) =>
+              onInputChange({
+                ...input,
+                lugar_operacion: e.target.value,
+              })
+            }
+          />
+          <div className="text-xs text-muted-foreground mt-1">
+            Especifica el lugar donde se registra este ratio
+          </div>
+        </div>
       </CardContent>
     </Card>
   );

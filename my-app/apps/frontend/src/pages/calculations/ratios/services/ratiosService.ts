@@ -6,12 +6,26 @@ interface ApiResponse<T> {
   error?: string;
 }
 
+interface RatiosVersionJson {
+  fecha_efectiva: string;
+  ratios: Array<{
+    tipo_ratio_id: number;
+    tipo_ratio_nombre: string;
+    valor: number | null;
+    categoria: string;
+  }>;
+  comentario?: string;
+  usuario_id?: string;
+}
+
 interface CreateRatioDto {
   modelo_id: number;
   tipo_ratio_id: number;
   valor?: number | null;
   fecha_efectiva: string; // ISO
   comentario?: string;
+  ratios_version?: RatiosVersionJson;
+  lugar_operacion?: string;
 }
 interface UpdateRatioDto {
   modelo_id?: number;
@@ -19,6 +33,8 @@ interface UpdateRatioDto {
   valor?: number | null;
   fecha_efectiva?: string;
   comentario?: string;
+  ratios_version?: RatiosVersionJson;
+  lugar_operacion?: string;
 }
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:4000";
@@ -122,7 +138,79 @@ class RatiosService {
       return netErr(e);
     }
   }
+
+  // Nuevos métodos para versiones JSON
+  async getAllVersionesJson(lugar?: string): Promise<ApiResponse<any[]>> {
+    try {
+      const params = lugar ? `?lugar=${encodeURIComponent(lugar)}` : "";
+      const resp = await fetch(`${RATIOS_ENDPOINT}/versiones-json${params}`);
+      return await handleApiResponse<any[]>(resp);
+    } catch (e) {
+      return netErr(e);
+    }
+  }
+
+  async getVersionesByModelo(modeloId: number): Promise<ApiResponse<any[]>> {
+    try {
+      const resp = await fetch(
+        `${RATIOS_ENDPOINT}/versiones-by-modelo/${modeloId}`
+      );
+      return await handleApiResponse<any[]>(resp);
+    } catch (e) {
+      return netErr(e);
+    }
+  }
+
+  async getVersionesByTipoRatio(
+    tipoRatioId: number
+  ): Promise<ApiResponse<any[]>> {
+    try {
+      const resp = await fetch(
+        `${RATIOS_ENDPOINT}/versiones-by-tipo-ratio/${tipoRatioId}`
+      );
+      return await handleApiResponse<any[]>(resp);
+    } catch (e) {
+      return netErr(e);
+    }
+  }
+
+  async createCompleteVersion(
+    modeloId: number,
+    data: {
+      comentario?: string;
+      usuario_id?: string;
+      lugar_operacion?: string;
+    }
+  ): Promise<ApiResponse<RatioVersion>> {
+    try {
+      const resp = await fetch(
+        `${RATIOS_ENDPOINT}/create-complete-version/${modeloId}`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(data),
+        }
+      );
+      return await handleApiResponse<RatioVersion>(resp);
+    } catch (e) {
+      return netErr(e);
+    }
+  }
+
+  async listByLugarOperacion(
+    lugar: string
+  ): Promise<ApiResponse<RatioVersion[]>> {
+    try {
+      const params = new URLSearchParams({ lugar }).toString();
+      const resp = await fetch(
+        `${RATIOS_ENDPOINT}/by-lugar-operacion?${params}`
+      );
+      return await handleApiResponse<RatioVersion[]>(resp);
+    } catch (e) {
+      return netErr(e);
+    }
+  }
 }
 
 export const ratiosService = new RatiosService();
-export type { CreateRatioDto, UpdateRatioDto, ApiResponse };
+export type { CreateRatioDto, UpdateRatioDto, ApiResponse, RatiosVersionJson };

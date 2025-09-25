@@ -18,6 +18,20 @@ export interface RatioType {
   categoria?: string;
 }
 
+export interface RatioVersionItem {
+  tipo_ratio_id: number;
+  tipo_ratio_nombre: string;
+  valor: number | null;
+  categoria: string;
+}
+
+export interface RatiosVersionJson {
+  fecha_efectiva: string;
+  ratios: RatioVersionItem[];
+  comentario?: string;
+  usuario_id?: string;
+}
+
 export interface RatioVersion {
   id: number;
   machine_id?: number;
@@ -26,6 +40,8 @@ export interface RatioVersion {
   valor: number | null;
   fecha_efectiva: string; // ISO string
   comentario?: string;
+  ratios_version?: RatiosVersionJson | null;
+  lugar_operacion?: string;
 }
 
 export interface IndividualRatioInput {
@@ -33,4 +49,6 @@ export interface IndividualRatioInput {
   valor: number | "";
   fecha_efectiva: string;
   comentario?: string;
+  lugar_operacion?: string;
+  ratios_version?: RatiosVersionJson;
 }
