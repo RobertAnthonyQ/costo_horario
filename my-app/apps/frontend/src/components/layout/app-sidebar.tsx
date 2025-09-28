@@ -42,14 +42,10 @@ const assetItems = [
 ];
 
 const calculationItems = [
-  { title: "Cálculo de Posesión", url: "/possession", icon: Calculator },
   { title: "Ratios", url: "/ratios", icon: BarChart3 },
+  { title: "PICs", url: "/pics", icon: FileText },
+  { title: "Cálculo de Posesión", url: "/possession", icon: Calculator },
   { title: "Informe Costo Horario", url: "/hourly-cost", icon: TrendingUp },
-  {
-    title: "Historial de Cálculos",
-    url: "/calculation-history",
-    icon: History,
-  },
 ];
 
 const reportItems = [

@@ -1,0 +1,194 @@
+import { ApiResponse, PICRecord, RawPICRecord } from "../models/types";
+
+const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:4000";
+const ENDPOINT = `${API_BASE_URL}/modelo-componentes-historico`;
+
+// Helpers de normalización
+function toNum(value: unknown, fallback: number | null = null): number | null {
+  if (value === null || value === undefined || value === "") return fallback;
+  if (typeof value === "number") return isNaN(value) ? fallback : value;
+  if (typeof value === "string") {
+    const trimmed = value.trim();
+    if (!trimmed) return fallback;
+    const n = Number(trimmed);
+    return isNaN(n) ? fallback : n;
+  }
+  return fallback;
+}
+
+function normalizePICRecord(raw: RawPICRecord): PICRecord {
+  return {
+    ...raw,
+    pcr: toNum(raw.pcr),
+    monto_usd: toNum(raw.monto_usd),
+    distribucion: toNum(raw.distribucion, 0) ?? 0,
+    monto_aplicado_al_proyecto: toNum(raw.monto_aplicado_al_proyecto, 0) ?? 0,
+  };
+}
+
+async function handleApiResponse<T>(
+  response: Response
+): Promise<ApiResponse<T>> {
+  try {
+    const text = await response.text();
+    let parsed: any = null;
+    try {
+      parsed = text ? JSON.parse(text) : null;
+    } catch (err) {
+      console.warn("⚠️ No se pudo parsear JSON, se devuelve texto crudo");
+      parsed = text;
+    }
+
+    if (!response.ok) {
+      console.error("❌ Error API PICs", {
+        status: response.status,
+        statusText: response.statusText,
+        body: parsed,
+      });
+      return {
+        success: false,
+        error:
+          (parsed && (parsed.message || parsed.error)) ||
+          (typeof parsed === "string" ? parsed : response.statusText),
+      };
+    }
+
+    let normalized: any = parsed;
+    if (Array.isArray(parsed)) {
+      normalized = parsed.map((r: RawPICRecord) => normalizePICRecord(r));
+    } else if (parsed && typeof parsed === "object") {
+      normalized = normalizePICRecord(parsed as RawPICRecord);
+    }
+
+    console.log("✅ Respuesta PICs exitosa", {
+      count: Array.isArray(normalized) ? normalized.length : undefined,
+    });
+    return { success: true, data: normalized as T };
+  } catch (e) {
+    console.error("❌ Excepción procesando respuesta PICs", e);
+    return {
+      success: false,
+      error: "Error al procesar la respuesta del servidor",
+    };
+  }
+}
+
+function netErr(e: any): ApiResponse<any> {
+  return { success: false, error: "Error de conexión. Verifique su red." };
+}
+
+class PICsService {
+  async listAll(): Promise<ApiResponse<PICRecord[]>> {
+    try {
+      console.log("📡 GET PICs listAll ->", ENDPOINT);
+      const resp = await fetch(ENDPOINT);
+      return await handleApiResponse<PICRecord[]>(resp);
+    } catch (e) {
+      return netErr(e);
+    }
+  }
+
+  async latestByModelo(modeloId: number): Promise<ApiResponse<PICRecord[]>> {
+    try {
+      const url = `${ENDPOINT}/latest-by-modelo/${modeloId}`;
+      console.log("📡 GET PICs latestByModelo ->", url);
+      const resp = await fetch(url);
+      return await handleApiResponse<PICRecord[]>(resp);
+    } catch (e) {
+      return netErr(e);
+    }
+  }
+
+  async byModelo(modeloId: number): Promise<ApiResponse<PICRecord[]>> {
+    try {
+      const url = `${ENDPOINT}/by-modelo/${modeloId}`;
+      console.log("📡 GET PICs byModelo ->", url);
+      const resp = await fetch(url);
+      return await handleApiResponse<PICRecord[]>(resp);
+    } catch (e) {
+      return netErr(e);
+    }
+  }
+
+  async byComponente(componenteId: number): Promise<ApiResponse<PICRecord[]>> {
+    try {
+      const url = `${ENDPOINT}/by-componente/${componenteId}`;
+      console.log("📡 GET PICs byComponente ->", url);
+      const resp = await fetch(url);
+      return await handleApiResponse<PICRecord[]>(resp);
+    } catch (e) {
+      return netErr(e);
+    }
+  }
+
+  async byFechaRange(
+    desde: string,
+    hasta: string
+  ): Promise<ApiResponse<PICRecord[]>> {
+    try {
+      const params = new URLSearchParams({
+        fechaDesde: desde,
+        fechaHasta: hasta,
+      }).toString();
+      const url = `${ENDPOINT}/by-fecha-range?${params}`;
+      console.log("📡 GET PICs byFechaRange ->", url);
+      const resp = await fetch(url);
+      return await handleApiResponse<PICRecord[]>(resp);
+    } catch (e) {
+      return netErr(e);
+    }
+  }
+
+  async createRecord(input: {
+    modelo_id: number;
+    componente_id: number;
+    pcr?: number | null;
+    monto_usd?: number | null;
+    fecha_efectiva?: string; // opcional, backend calculará distribucion/monto_aplicado
+  }): Promise<ApiResponse<PICRecord>> {
+    try {
+      const body = {
+        modelo_id: input.modelo_id,
+        componente_id: input.componente_id,
+        pcr: input.pcr ?? null,
+        monto_usd: input.monto_usd ?? null,
+        fecha_efectiva: input.fecha_efectiva || new Date().toISOString(),
+      };
+      console.log("🆕 POST PICs createRecord ->", body);
+      const resp = await fetch(ENDPOINT, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      return await handleApiResponse<PICRecord>(resp);
+    } catch (e) {
+      return netErr(e);
+    }
+  }
+
+  async updateRecord(
+    id: number,
+    changes: { pcr?: number | null; monto_usd?: number | null }
+  ): Promise<ApiResponse<PICRecord>> {
+    try {
+      const body: Record<string, any> = {};
+      if (changes.pcr !== undefined) body.pcr = changes.pcr;
+      if (changes.monto_usd !== undefined) body.monto_usd = changes.monto_usd;
+      if (Object.keys(body).length === 0) {
+        return { success: false, error: "Sin cambios" };
+      }
+      console.log("✏️ PATCH PICs updateRecord ->", id, body);
+      const resp = await fetch(`${ENDPOINT}/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      return await handleApiResponse<PICRecord>(resp);
+    } catch (e) {
+      return netErr(e);
+    }
+  }
+}
+
+export const picsService = new PICsService();
+export { PICsService };

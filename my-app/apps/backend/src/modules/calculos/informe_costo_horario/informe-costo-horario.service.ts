@@ -33,6 +33,7 @@ export class InformeCostoHorarioService {
     for (const r of latestByTipoId.values()) {
       const key = r.tipo_ratio.nombre.trim().toLowerCase();
       nombreToValor[key] = r.valor ?? 0;
+      console.log(`[DEBUG] Ratio encontrado: "${key}" = ${r.valor ?? 0}`);
     }
 
     // Extraer valores con llaves estándar usadas en el JSON
@@ -45,9 +46,28 @@ export class InformeCostoHorarioService {
       menores: nombreToValor['menores'] || 0,
       mayores: nombreToValor['mayores'] || 0,
       neumaticos: nombreToValor['neumaticos'] || 0,
-      estructural: nombreToValor['estructural'] || 0,
-      desgaste: nombreToValor['desgaste'] || 0,
+      estructural:
+        nombreToValor['estructural'] ||
+        nombreToValor['soldadura'] ||
+        nombreToValor['soldaduras'] ||
+        nombreToValor['correctivo'] ||
+        0,
+      desgaste:
+        nombreToValor['desgaste'] ||
+        nombreToValor['gets'] ||
+        nombreToValor['get'] ||
+        nombreToValor['elementos de desgaste'] ||
+        nombreToValor['desgastes'] ||
+        0,
     };
+
+    console.log(`[DEBUG] 🎯 Valores finales mapeados:`);
+    console.log(
+      `[DEBUG] - Estructural: ${map.estructural} (buscó: 'estructural', 'soldadura', 'soldaduras', 'correctivo')`,
+    );
+    console.log(
+      `[DEBUG] - Desgaste: ${map.desgaste} (buscó: 'desgaste', 'gets', 'get', 'elementos de desgaste', 'desgastes')`,
+    );
 
     return { map, raw: ratios };
   }
@@ -64,75 +84,66 @@ export class InformeCostoHorarioService {
       JSON.stringify(componentesHistorico, null, 2),
     );
 
-    // Mapear nombres de componentes a campos específicos
+    // Mapear por IDs específicos según la BD real (1-7)
     const componentesMap: Record<string, number> = {
-      motor: 0,
-      compresor: 0,
-      lineaPerforacion: 0,
-      sistemaHidraulico: 0,
-      mandosFinalesTraslacion: 0,
-      trenRodamientos: 0,
-      sistemaElectrico: 0,
+      motor: 0, // ID 1: Motor
+      transmision: 0, // ID 2: Transmisión
+      convertidor: 0, // ID 3: Convertidor
+      mandosFinales: 0, // ID 4: Mandos finales y freno diferenciales
+      diferenciales: 0, // ID 5: diferenciales
+      sistemaHidraulico: 0, // ID 6: Sistema hidráulico
+      sistemaElectrico: 0, // ID 7: Sistema Eléctrico
     };
 
     for (const comp of componentesHistorico) {
-      const nombreNormalizado = comp.componente.nombre.toLowerCase().trim();
+      const componenteId = comp.componente.id;
       const montoAplicado = Number(comp.monto_aplicado_al_proyecto) || 0;
 
-      console.log(`[DEBUG] Procesando componente: "${comp.componente.nombre}"`);
-      console.log(`[DEBUG] Nombre normalizado: "${nombreNormalizado}"`);
+      console.log(
+        `[DEBUG] Procesando componente ID: ${componenteId}, Nombre: "${comp.componente.nombre}"`,
+      );
       console.log(`[DEBUG] Monto aplicado: ${montoAplicado}`);
 
-      // Mapear por nombre exacto o variaciones
-      if (nombreNormalizado === 'motor') {
-        console.log(`[DEBUG] ✓ Mapeado como MOTOR: ${montoAplicado}`);
-        componentesMap.motor = montoAplicado;
-      } else if (nombreNormalizado === 'compresor') {
-        console.log(`[DEBUG] ✓ Mapeado como COMPRESOR: ${montoAplicado}`);
-        componentesMap.compresor = montoAplicado;
-      } else if (
-        nombreNormalizado.includes('linea') &&
-        nombreNormalizado.includes('perfor')
-      ) {
-        console.log(
-          `[DEBUG] ✓ Mapeado como LINEA PERFORACION: ${montoAplicado}`,
-        );
-        componentesMap.lineaPerforacion = montoAplicado;
-      } else if (
-        nombreNormalizado.includes('sistema') &&
-        nombreNormalizado.includes('hidraulico')
-      ) {
-        console.log(
-          `[DEBUG] ✓ Mapeado como SISTEMA HIDRAULICO: ${montoAplicado}`,
-        );
-        componentesMap.sistemaHidraulico = montoAplicado;
-      } else if (
-        nombreNormalizado.includes('mandos') &&
-        nombreNormalizado.includes('finales')
-      ) {
-        console.log(`[DEBUG] ✓ Mapeado como MANDOS FINALES: ${montoAplicado}`);
-        componentesMap.mandosFinalesTraslacion = montoAplicado;
-      } else if (
-        nombreNormalizado.includes('tren') &&
-        nombreNormalizado.includes('rodamiento')
-      ) {
-        console.log(
-          `[DEBUG] ✓ Mapeado como TREN RODAMIENTOS: ${montoAplicado}`,
-        );
-        componentesMap.trenRodamientos = montoAplicado;
-      } else if (
-        nombreNormalizado.includes('sistema') &&
-        (nombreNormalizado.includes('eléctrico') ||
-          nombreNormalizado.includes('electrico'))
-      ) {
-        console.log(
-          `[DEBUG] ✓ Mapeado como SISTEMA ELECTRICO: ${montoAplicado}`,
-        );
-        componentesMap.sistemaElectrico = montoAplicado;
-      } else {
-        console.log(
-          `[DEBUG] ✗ NO MAPEADO: "${nombreNormalizado}" no coincide con ningún patrón`,
-        );
+      // Mapear por ID exacto
+      switch (componenteId) {
+        case 1: // Motor
+          console.log(`[DEBUG] ✓ Mapeado como MOTOR: ${montoAplicado}`);
+          componentesMap.motor = montoAplicado;
+          break;
+        case 2: // Transmisión
+          console.log(`[DEBUG] ✓ Mapeado como TRANSMISION: ${montoAplicado}`);
+          componentesMap.transmision = montoAplicado;
+          break;
+        case 3: // Convertidor
+          console.log(`[DEBUG] ✓ Mapeado como CONVERTIDOR: ${montoAplicado}`);
+          componentesMap.convertidor = montoAplicado;
+          break;
+        case 4: // Mandos finales y freno diferenciales
+          console.log(
+            `[DEBUG] ✓ Mapeado como MANDOS FINALES: ${montoAplicado}`,
+          );
+          componentesMap.mandosFinales = montoAplicado;
+          break;
+        case 5: // diferenciales
+          console.log(`[DEBUG] ✓ Mapeado como DIFERENCIALES: ${montoAplicado}`);
+          componentesMap.diferenciales = montoAplicado;
+          break;
+        case 6: // Sistema hidráulico
+          console.log(
+            `[DEBUG] ✓ Mapeado como SISTEMA HIDRAULICO: ${montoAplicado}`,
+          );
+          componentesMap.sistemaHidraulico = montoAplicado;
+          break;
+        case 7: // Sistema Eléctrico
+          console.log(
+            `[DEBUG] ✓ Mapeado como SISTEMA ELECTRICO: ${montoAplicado}`,
+          );
+          componentesMap.sistemaElectrico = montoAplicado;
+          break;
+        default:
+          console.log(
+            `[DEBUG] ✗ NO MAPEADO: ID ${componenteId} "${comp.componente.nombre}" no está en el mapeo configurado`,
+          );
       }
     }
 
@@ -475,34 +486,22 @@ export class InformeCostoHorarioService {
       const utilidadPosesion =
         subtotalPosesion * (machine.modelo?.porcentaje_utilidad || 0);
 
-      // Cálculo total de PPTO PICs para reutilizar
+      // Cálculo total de PPTO PICs - solo la suma de los 7 componentes PICs (IDs 1-7)
       const totalPptoPics =
-        ratios.lubricantes +
-        ratios.filtros +
-        ratios.materialesFerreteria +
-        ratios.materialesElectricos +
-        ratios.mangueras +
-        ratios.menores +
-        ratios.mayores +
         (componentesMap.motor * ratios.mayores * horasUsoAnual) /
           vidaUtilFabricante +
-        (componentesMap.compresor * ratios.mayores * horasUsoAnual) /
+        (componentesMap.transmision * ratios.mayores * horasUsoAnual) /
           vidaUtilFabricante +
-        (componentesMap.lineaPerforacion * ratios.mayores * horasUsoAnual) /
+        (componentesMap.convertidor * ratios.mayores * horasUsoAnual) /
+          vidaUtilFabricante +
+        (componentesMap.mandosFinales * ratios.mayores * horasUsoAnual) /
+          vidaUtilFabricante +
+        (componentesMap.diferenciales * ratios.mayores * horasUsoAnual) /
           vidaUtilFabricante +
         (componentesMap.sistemaHidraulico * ratios.mayores * horasUsoAnual) /
           vidaUtilFabricante +
-        (componentesMap.mandosFinalesTraslacion *
-          ratios.mayores *
-          horasUsoAnual) /
-          vidaUtilFabricante +
-        (componentesMap.trenRodamientos * ratios.mayores * horasUsoAnual) /
-          vidaUtilFabricante +
         (componentesMap.sistemaElectrico * ratios.mayores * horasUsoAnual) /
-          vidaUtilFabricante +
-        (ratios.neumaticos * horasUsoAnual) / vidaUtilFabricante +
-        ratios.soldaduraEstructuras +
-        ratios.gets;
+          vidaUtilFabricante;
 
       // Calcular subtotal variable usando la función
       const subtotalVariableCalculado = this.calcularSubtotalVariable(
@@ -562,29 +561,24 @@ export class InformeCostoHorarioService {
             costoMCorrMangueras: ratios.mangueras,
             costoMCorrMenores: ratios.menores,
             costoMCorrMayores: totalPptoPics / horasUsoAnual, // Usar el total dividido por horas anuales
+            // Componentes reales de la BD (IDs 1-7)
             motor:
               (componentesMap.motor * ratios.mayores * horasUsoAnual) /
               vidaUtilFabricante,
-            compresor:
-              (componentesMap.compresor * ratios.mayores * horasUsoAnual) /
+            transmision:
+              (componentesMap.transmision * ratios.mayores * horasUsoAnual) /
               vidaUtilFabricante,
-            lineaPerforacion:
-              (componentesMap.lineaPerforacion *
-                ratios.mayores *
-                horasUsoAnual) /
+            convertidor:
+              (componentesMap.convertidor * ratios.mayores * horasUsoAnual) /
+              vidaUtilFabricante,
+            mandosFinales:
+              (componentesMap.mandosFinales * ratios.mayores * horasUsoAnual) /
+              vidaUtilFabricante,
+            diferenciales:
+              (componentesMap.diferenciales * ratios.mayores * horasUsoAnual) /
               vidaUtilFabricante,
             sistemaHidraulico:
               (componentesMap.sistemaHidraulico *
-                ratios.mayores *
-                horasUsoAnual) /
-              vidaUtilFabricante,
-            mandosFinalesTraslacion:
-              (componentesMap.mandosFinalesTraslacion *
-                ratios.mayores *
-                horasUsoAnual) /
-              vidaUtilFabricante,
-            trenRodamientos:
-              (componentesMap.trenRodamientos *
                 ratios.mayores *
                 horasUsoAnual) /
               vidaUtilFabricante,
@@ -620,9 +614,11 @@ export class InformeCostoHorarioService {
             ratios.materialesElectricos +
             ratios.mangueras +
             ratios.menores +
+            ratios.soldaduraEstructuras +
             totalPptoPics / horasUsoAnual,
           estructural: ratios.soldaduraEstructuras,
           neumaticos: ratios.neumaticos,
+          manoDeObraTecnico: dto.mano_de_obra_tecnico || 0,
           elementosDesgaste: ratios.gets,
           subtotalVariable: subtotalVariableCalculado,
           utilidad: 0,
@@ -649,12 +645,17 @@ export class InformeCostoHorarioService {
         idEquipo: machine.id_equipo_interno,
       },
       parametros: {
+        machineId: dto.machineId,
+        posesionId: dto.posesionId,
         mesesPorAnio: dto.mesesPorAnio || 12,
         tasaFinanciamiento: dto.tasaFinanciamiento || 0,
         aniosFinanciamiento: dto.aniosFinanciamiento || 0,
         tasaSeguro: dto.tasaSeguro || 0,
         aniosSeguro: dto.aniosSeguro || 0,
+        comentario: dto.comentario,
+        usuarioId: dto.usuarioId,
         incluyeGastosDistribuibles: dto.incluyeGastosDistribuibles || false,
+        costoMCorrMayores: dto.costoMCorrMayores,
         porcentajeUtilidad: machine.modelo?.porcentaje_utilidad || 0,
         fechaCalculo: new Date().toISOString(),
       },
@@ -949,46 +950,40 @@ export class InformeCostoHorarioService {
         console.log(`[RESUMEN] Estructural: ${ratiosModelo.estructural}`);
         console.log(`[RESUMEN] Desgaste: ${ratiosModelo.desgaste}`);
 
-        console.log(`[RESUMEN] ----- COMPONENTES MAP -----`);
+        console.log(`[RESUMEN] ----- COMPONENTES MAP (IDs 1-7) -----`);
         console.log(`[RESUMEN] Motor: ${componentesMap.motor}`);
-        console.log(`[RESUMEN] Compresor: ${componentesMap.compresor}`);
+        console.log(`[RESUMEN] Transmisión: ${componentesMap.transmision}`);
+        console.log(`[RESUMEN] Convertidor: ${componentesMap.convertidor}`);
         console.log(
-          `[RESUMEN] Línea Perforación: ${componentesMap.lineaPerforacion}`,
+          `[RESUMEN] Mandos Finales: ${componentesMap.mandosFinales}`,
         );
+        console.log(`[RESUMEN] Diferenciales: ${componentesMap.diferenciales}`);
         console.log(
           `[RESUMEN] Sistema Hidráulico: ${componentesMap.sistemaHidraulico}`,
-        );
-        console.log(
-          `[RESUMEN] Mandos Finales: ${componentesMap.mandosFinalesTraslacion}`,
-        );
-        console.log(
-          `[RESUMEN] Tren Rodamientos: ${componentesMap.trenRodamientos}`,
         );
         console.log(
           `[RESUMEN] Sistema Eléctrico: ${componentesMap.sistemaElectrico}`,
         );
 
-        // Cálculo de componentes PICs usando ratios mayores
+        // Cálculo de componentes PICs usando ratios mayores - con componentes reales (IDs 1-7)
         const componentePics = {
           motor:
             (componentesMap.motor * ratiosMayores * horasUsoAnual) /
             vidaUtilFabricante,
-          compresor:
-            (componentesMap.compresor * ratiosMayores * horasUsoAnual) /
+          transmision:
+            (componentesMap.transmision * ratiosMayores * horasUsoAnual) /
             vidaUtilFabricante,
-          lineaPerforacion:
-            (componentesMap.lineaPerforacion * ratiosMayores * horasUsoAnual) /
+          convertidor:
+            (componentesMap.convertidor * ratiosMayores * horasUsoAnual) /
+            vidaUtilFabricante,
+          mandosFinales:
+            (componentesMap.mandosFinales * ratiosMayores * horasUsoAnual) /
+            vidaUtilFabricante,
+          diferenciales:
+            (componentesMap.diferenciales * ratiosMayores * horasUsoAnual) /
             vidaUtilFabricante,
           sistemaHidraulico:
             (componentesMap.sistemaHidraulico * ratiosMayores * horasUsoAnual) /
-            vidaUtilFabricante,
-          mandosFinalesTraslacion:
-            (componentesMap.mandosFinalesTraslacion *
-              ratiosMayores *
-              horasUsoAnual) /
-            vidaUtilFabricante,
-          trenRodamientos:
-            (componentesMap.trenRodamientos * ratiosMayores * horasUsoAnual) /
             vidaUtilFabricante,
           sistemaElectrico:
             (componentesMap.sistemaElectrico * ratiosMayores * horasUsoAnual) /
@@ -1002,19 +997,19 @@ export class InformeCostoHorarioService {
           `[RESUMEN] Motor PIC: ${componentePics.motor.toFixed(4)} = (${componentesMap.motor} * ${ratiosMayores} * ${horasUsoAnual}) / ${vidaUtilFabricante}`,
         );
         console.log(
-          `[RESUMEN] Compresor PIC: ${componentePics.compresor.toFixed(4)} = (${componentesMap.compresor} * ${ratiosMayores} * ${horasUsoAnual}) / ${vidaUtilFabricante}`,
+          `[RESUMEN] Transmisión PIC: ${componentePics.transmision.toFixed(4)} = (${componentesMap.transmision} * ${ratiosMayores} * ${horasUsoAnual}) / ${vidaUtilFabricante}`,
         );
         console.log(
-          `[RESUMEN] Línea Perforación PIC: ${componentePics.lineaPerforacion.toFixed(4)} = (${componentesMap.lineaPerforacion} * ${ratiosMayores} * ${horasUsoAnual}) / ${vidaUtilFabricante}`,
+          `[RESUMEN] Convertidor PIC: ${componentePics.convertidor.toFixed(4)} = (${componentesMap.convertidor} * ${ratiosMayores} * ${horasUsoAnual}) / ${vidaUtilFabricante}`,
+        );
+        console.log(
+          `[RESUMEN] Mandos Finales PIC: ${componentePics.mandosFinales.toFixed(4)} = (${componentesMap.mandosFinales} * ${ratiosMayores} * ${horasUsoAnual}) / ${vidaUtilFabricante}`,
+        );
+        console.log(
+          `[RESUMEN] Diferenciales PIC: ${componentePics.diferenciales.toFixed(4)} = (${componentesMap.diferenciales} * ${ratiosMayores} * ${horasUsoAnual}) / ${vidaUtilFabricante}`,
         );
         console.log(
           `[RESUMEN] Sistema Hidráulico PIC: ${componentePics.sistemaHidraulico.toFixed(4)} = (${componentesMap.sistemaHidraulico} * ${ratiosMayores} * ${horasUsoAnual}) / ${vidaUtilFabricante}`,
-        );
-        console.log(
-          `[RESUMEN] Mandos Finales PIC: ${componentePics.mandosFinalesTraslacion.toFixed(4)} = (${componentesMap.mandosFinalesTraslacion} * ${ratiosMayores} * ${horasUsoAnual}) / ${vidaUtilFabricante}`,
-        );
-        console.log(
-          `[RESUMEN] Tren Rodamientos PIC: ${componentePics.trenRodamientos.toFixed(4)} = (${componentesMap.trenRodamientos} * ${ratiosMayores} * ${horasUsoAnual}) / ${vidaUtilFabricante}`,
         );
         console.log(
           `[RESUMEN] Sistema Eléctrico PIC: ${componentePics.sistemaElectrico.toFixed(4)} = (${componentesMap.sistemaElectrico} * ${ratiosMayores} * ${horasUsoAnual}) / ${vidaUtilFabricante}`,
@@ -1023,58 +1018,38 @@ export class InformeCostoHorarioService {
           `[RESUMEN] Neumáticos PIC: ${componentePics.neumaticos.toFixed(4)} = (${ratiosModelo.neumaticos} * ${horasUsoAnual}) / ${vidaUtilFabricante}`,
         );
 
-        // Cálculo total de PPTO PICs
+        // Cálculo total de PPTO PICs - solo la suma de los 7 componentes PICs (IDs 1-7)
         const totalPptoPics =
-          ratiosModelo.lubricantes +
-          ratiosModelo.filtros +
-          ratiosModelo.materialesFerreteria +
-          ratiosModelo.materialesElectricos +
-          ratiosModelo.mangueras +
-          ratiosModelo.menores +
-          ratiosMayores +
           componentePics.motor +
-          componentePics.compresor +
-          componentePics.lineaPerforacion +
+          componentePics.transmision +
+          componentePics.convertidor +
+          componentePics.mandosFinales +
+          componentePics.diferenciales +
           componentePics.sistemaHidraulico +
-          componentePics.mandosFinalesTraslacion +
-          componentePics.trenRodamientos +
-          componentePics.sistemaElectrico +
-          componentePics.neumaticos +
-          ratiosModelo.estructural +
-          ratiosModelo.desgaste;
+          componentePics.sistemaElectrico;
 
-        console.log(`[RESUMEN] ----- CÁLCULO TOTAL PPTO PICs -----`);
-        console.log(`[RESUMEN] Lubricantes: ${ratiosModelo.lubricantes}`);
-        console.log(`[RESUMEN] Filtros: ${ratiosModelo.filtros}`);
         console.log(
-          `[RESUMEN] Materiales Ferretería: ${ratiosModelo.materialesFerreteria}`,
+          `[RESUMEN] ----- CÁLCULO TOTAL PPTO PICs (Solo 7 Componentes) -----`,
+        );
+        console.log(`[RESUMEN] Motor PIC: ${componentePics.motor.toFixed(4)}`);
+        console.log(
+          `[RESUMEN] Transmisión PIC: ${componentePics.transmision.toFixed(4)}`,
         );
         console.log(
-          `[RESUMEN] Materiales Eléctricos: ${ratiosModelo.materialesElectricos}`,
-        );
-        console.log(`[RESUMEN] Mangueras: ${ratiosModelo.mangueras}`);
-        console.log(`[RESUMEN] Menores: ${ratiosModelo.menores}`);
-        console.log(`[RESUMEN] Mayores (BD): ${ratiosMayores}`);
-        console.log(`[RESUMEN] + Motor PIC: ${componentePics.motor}`);
-        console.log(`[RESUMEN] + Compresor PIC: ${componentePics.compresor}`);
-        console.log(
-          `[RESUMEN] + Línea Perforación PIC: ${componentePics.lineaPerforacion}`,
+          `[RESUMEN] Convertidor PIC: ${componentePics.convertidor.toFixed(4)}`,
         );
         console.log(
-          `[RESUMEN] + Sistema Hidráulico PIC: ${componentePics.sistemaHidraulico}`,
+          `[RESUMEN] Mandos Finales PIC: ${componentePics.mandosFinales.toFixed(4)}`,
         );
         console.log(
-          `[RESUMEN] + Mandos Finales PIC: ${componentePics.mandosFinalesTraslacion}`,
+          `[RESUMEN] Diferenciales PIC: ${componentePics.diferenciales.toFixed(4)}`,
         );
         console.log(
-          `[RESUMEN] + Tren Rodamientos PIC: ${componentePics.trenRodamientos}`,
+          `[RESUMEN] Sistema Hidráulico PIC: ${componentePics.sistemaHidraulico.toFixed(4)}`,
         );
         console.log(
-          `[RESUMEN] + Sistema Eléctrico PIC: ${componentePics.sistemaElectrico}`,
+          `[RESUMEN] Sistema Eléctrico PIC: ${componentePics.sistemaElectrico.toFixed(4)}`,
         );
-        console.log(`[RESUMEN] + Neumáticos PIC: ${componentePics.neumaticos}`);
-        console.log(`[RESUMEN] + Estructural: ${ratiosModelo.estructural}`);
-        console.log(`[RESUMEN] + Desgaste: ${ratiosModelo.desgaste}`);
         console.log(`[RESUMEN] TOTAL PPTO PICs: ${totalPptoPics.toFixed(4)}`);
 
         // Ratios para mantenimiento - ahora usando el totalPptoPics calculado
@@ -1292,10 +1267,18 @@ export class InformeCostoHorarioService {
         idEquipo: machine.id_equipo_interno,
       },
       parametros: {
-        posesionId: historial.machine_id, // usando machine_id como referencia
+        machineId: informeData.parametros?.machineId || historial.machine_id,
+        posesionId: informeData.parametros?.posesionId || historial.machine_id, // usando machine_id como referencia
+        mesesPorAnio: informeData.parametros?.mesesPorAnio || 12,
         tasaFinanciamiento: informeData.parametros?.tasaFinanciamiento || 0,
         aniosFinanciamiento: informeData.parametros?.aniosFinanciamiento || 0,
         tasaSeguro: informeData.parametros?.tasaSeguro || 0,
+        aniosSeguro: informeData.parametros?.aniosSeguro || 0,
+        comentario: informeData.parametros?.comentario,
+        usuarioId: informeData.parametros?.usuarioId,
+        incluyeGastosDistribuibles:
+          informeData.parametros?.incluyeGastosDistribuibles || false,
+        costoMCorrMayores: informeData.parametros?.costoMCorrMayores,
         porcentajeUtilidad: informeData.parametros?.porcentajeUtilidad || 0,
         fechaCalculo: historial.fecha_calculo.toISOString(),
       },
@@ -1325,5 +1308,142 @@ export class InformeCostoHorarioService {
 
     // Usar el método existente para generar el resumen
     return this.getResumenFromHistorial(historialMasReciente.id);
+  }
+
+  /**
+   * Obtiene todas las máquinas con sus últimos reportes de costo horario
+   * Solo incluye máquinas que tienen al menos un reporte de costo horario
+   */
+  async getAllMachinesWithLatestReports(): Promise<any[]> {
+    try {
+      // Obtener todas las máquinas que tienen reportes de costo horario
+      const machinesWithReports = await this.prisma.machines.findMany({
+        where: {
+          informe_costo_horario: {
+            some: {}, // Máquinas que tienen al menos un informe
+          },
+        },
+        include: {
+          modelo: {
+            include: {
+              marca: true,
+              equipo: true,
+            },
+          },
+          informe_costo_horario: {
+            orderBy: { fecha_calculo: 'desc' },
+            take: 1, // Solo el más reciente
+            select: {
+              id: true,
+              fecha_calculo: true,
+              tasa_financiamiento_usada: true,
+              anios_financiamiento: true,
+              tasa_seguro_usada: true,
+              anios_seguro: true,
+              mes_por_anio: true,
+              usuario_id: true,
+            },
+          },
+        },
+        orderBy: { id: 'asc' },
+      });
+
+      // Formatear la respuesta
+      const result = machinesWithReports.map((machine) => {
+        const latestReport = machine.informe_costo_horario[0];
+
+        return {
+          machine: {
+            id: machine.id,
+            item: machine.id,
+            equipo: machine.modelo?.equipo?.nombre || null,
+            marca: machine.modelo?.marca?.nombre || null,
+            modelo: machine.modelo?.nombre || null,
+            horometroInicial: machine.horometro_inicial,
+            estado: machine.estado,
+            idEquipo: machine.id_equipo_interno,
+            valorSimilarNuevo: machine.valor_similar_nuevo,
+            politicaDepreciacion: machine.politica_depreciacion,
+            vidaUtil: machine.vida_util,
+          },
+          latestReport: latestReport
+            ? {
+                id: latestReport.id,
+                fechaCalculo: latestReport.fecha_calculo,
+                tasaFinanciamiento: latestReport.tasa_financiamiento_usada,
+                aniosFinanciamiento: latestReport.anios_financiamiento,
+                tasaSeguro: latestReport.tasa_seguro_usada,
+                aniosSeguro: latestReport.anios_seguro,
+                mesPorAnio: latestReport.mes_por_anio,
+                usuarioId: latestReport.usuario_id,
+              }
+            : null,
+          hasReports: !!latestReport,
+          totalReports: machine.informe_costo_horario.length,
+        };
+      });
+
+      return result;
+    } catch (error: unknown) {
+      console.error('Error getting all machines with latest reports:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Obtiene el resumen simplificado para múltiples máquinas
+   * Basado en sus últimos reportes de costo horario
+   */
+  async getAllMachinesResumenReports(): Promise<any[]> {
+    try {
+      const machinesWithReports = await this.getAllMachinesWithLatestReports();
+
+      const resumenes = await Promise.all(
+        machinesWithReports.map(async (machineData) => {
+          if (!machineData.latestReport) {
+            return {
+              machine: machineData.machine,
+              latestReport: null,
+              resumen: null,
+              hasReports: false,
+            };
+          }
+
+          try {
+            // Generar el resumen usando el historial más reciente
+            const resumenData = await this.getResumenFromHistorial(
+              machineData.latestReport.id,
+            );
+
+            return {
+              machine: machineData.machine,
+              latestReport: machineData.latestReport,
+              resumen: resumenData.resumen, // Solo el array de resumen, no toda la respuesta
+              parametros: resumenData.parametros,
+              hasReports: true,
+              totalReports: machineData.totalReports,
+            };
+          } catch (error) {
+            console.error(
+              `Error generating resumen for machine ${machineData.machine.id}:`,
+              error,
+            );
+            return {
+              machine: machineData.machine,
+              latestReport: machineData.latestReport,
+              resumen: null,
+              error: 'Error generating resumen',
+              hasReports: true,
+              totalReports: machineData.totalReports,
+            };
+          }
+        }),
+      );
+
+      return resumenes;
+    } catch (error: unknown) {
+      console.error('Error getting all machines resumen reports:', error);
+      throw error;
+    }
   }
 }

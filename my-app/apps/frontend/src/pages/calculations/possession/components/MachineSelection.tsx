@@ -90,6 +90,10 @@ export const MachineSelection = ({
             response.data.length
           );
           setAvailableVersions(response.data);
+          // Si no hay versiones disponibles, seleccionar automáticamente "Nuevo Cálculo"
+          if (response.data.length === 0 && selectedVersion !== "new") {
+            onVersionSelect("new");
+          }
         } else {
           console.error(
             "❌ Error en la respuesta de versiones:",
@@ -101,6 +105,10 @@ export const MachineSelection = ({
             response.error?.includes("not found")
           ) {
             setAvailableVersions([]);
+            // Seleccionar automáticamente "Nuevo Cálculo" cuando no exista historial
+            if (selectedVersion !== "new") {
+              onVersionSelect("new");
+            }
           } else {
             setVersionsError(response.error || "Error al cargar las versiones");
           }

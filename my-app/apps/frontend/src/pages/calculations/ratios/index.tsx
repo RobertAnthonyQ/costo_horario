@@ -41,8 +41,9 @@ export default function RatiosCalculation() {
     Record<number, RatioVersion>
   >({});
   const [valuesByTipo, setValuesByTipo] = useState<Record<number, string>>({});
-  const [editingRatios, setEditingRatios] = useState<Set<number>>(new Set());
-  const [savingRatios, setSavingRatios] = useState<Set<number>>(new Set());
+  // Edición y guardado global
+  const [isEditing, setIsEditing] = useState(false);
+  const [savingBulk, setSavingBulk] = useState(false);
 
   // Estados para guardado de historial
   const [savingHistory, setSavingHistory] = useState(false);
@@ -167,36 +168,49 @@ export default function RatiosCalculation() {
     setValuesByTipo((prev) => ({ ...prev, [tipoId]: value }));
   };
 
-  const handleRowSave = async (tipoId: number) => {
-    if (!selectedMachine || !currentModeloId) return;
+  // Guardado masivo: crea/actualiza todos los ratios editados
+  const handleBulkSave = async () => {
+    if (!selectedMachine || !currentModeloId) {
+      alert("Debe seleccionar una máquina válida");
+      return;
+    }
 
-    setSavingRatios((prev) => new Set([...prev, tipoId]));
+    setSavingBulk(true);
 
     try {
-      const latest = latestByTipoMap[tipoId];
-      const valorStr = valuesByTipo[tipoId];
-      const valorNum = valorStr === "" ? null : Number(valorStr);
+      // Iterar sobre todos los tipos y crear/actualizar solo si hay cambios
+      for (const t of ratioTypes) {
+        const latest = latestByTipoMap[t.id];
+        const valorStr = valuesByTipo[t.id];
+        const valorNum = valorStr === "" ? null : Number(valorStr);
+        const currentVal = latest?.valor ?? null;
 
-      if (latest) {
-        const res = await ratiosService.update(latest.id, { valor: valorNum });
-        if (!res.success) {
-          alert(res.error || "Error al actualizar");
-          return;
-        }
-      } else {
-        const res = await ratiosService.create({
-          modelo_id: currentModeloId,
-          tipo_ratio_id: tipoId,
-          valor: valorNum,
-          fecha_efectiva: new Date().toISOString(),
-        });
-        if (!res.success) {
-          alert(res.error || "Error al crear");
-          return;
+        // Si no hubo cambios, saltar
+        if (currentVal === valorNum) continue;
+
+        if (latest) {
+          const res = await ratiosService.update(latest.id, {
+            valor: valorNum,
+          });
+          if (!res.success) {
+            alert(res.error || `Error al actualizar ratio ${t.nombre}`);
+            return; // abortar en el primer error
+          }
+        } else {
+          const res = await ratiosService.create({
+            modelo_id: currentModeloId,
+            tipo_ratio_id: t.id,
+            valor: valorNum,
+            fecha_efectiva: new Date().toISOString(),
+          });
+          if (!res.success) {
+            alert(res.error || `Error al crear ratio ${t.nombre}`);
+            return; // abortar en el primer error
+          }
         }
       }
 
-      // Refrescar historial y últimos
+      // Refrescar historial y últimos una vez al final
       const [hResp, latestResp] = await Promise.all([
         ratiosService.listByModelo(Number(currentModeloId)),
         ratiosService.latestByModelo(Number(currentModeloId)),
@@ -206,25 +220,15 @@ export default function RatiosCalculation() {
         const map: Record<number, RatioVersion> = {};
         latestResp.data.forEach((r) => (map[r.tipo_ratio_id] = r));
         setLatestByTipoMap(map);
+      } else {
+        setLatestByTipoMap({});
       }
 
-      // Salir del modo edición
-      setEditingRatios((prev) => {
-        const next = new Set(prev);
-        next.delete(tipoId);
-        return next;
-      });
+      setIsEditing(false);
+      alert("Cambios guardados correctamente");
     } finally {
-      setSavingRatios((prev) => {
-        const next = new Set(prev);
-        next.delete(tipoId);
-        return next;
-      });
+      setSavingBulk(false);
     }
-  };
-
-  const handleEditRatio = (tipoId: number) => {
-    setEditingRatios((prev) => new Set([...prev, tipoId]));
   };
 
   // Función para abrir el modal de ubicación antes de guardar historial
@@ -582,7 +586,46 @@ export default function RatiosCalculation() {
 
               <Card>
                 <CardHeader>
-                  <CardTitle>Ratios del Modelo (editar/crear)</CardTitle>
+                  <div className="flex items-center justify-between gap-4">
+                    <CardTitle>Ratios del Modelo</CardTitle>
+                    <div className="flex items-center gap-2">
+                      {!isEditing ? (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setIsEditing(true)}
+                          disabled={!selectedMachine || !currentModeloId}
+                        >
+                          <Edit2 className="h-4 w-4 mr-2" />
+                          Editar
+                        </Button>
+                      ) : (
+                        <>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setIsEditing(false)}
+                            disabled={savingBulk}
+                          >
+                            <X className="h-4 w-4 mr-2" />
+                            Cancelar
+                          </Button>
+                          <Button
+                            size="sm"
+                            onClick={handleBulkSave}
+                            disabled={savingBulk || !currentModeloId}
+                          >
+                            {savingBulk ? (
+                              <div className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent mr-2" />
+                            ) : (
+                              <Save className="h-4 w-4 mr-2" />
+                            )}
+                            Guardar Cambios
+                          </Button>
+                        </>
+                      )}
+                    </div>
+                  </div>
                 </CardHeader>
                 <CardContent className="space-y-4">
                   {!selectedMachine ? (
@@ -620,8 +663,6 @@ export default function RatiosCalculation() {
                                   )
                                   .map((t) => {
                                     const latest = latestByTipoMap[t.id];
-                                    const isEditing = editingRatios.has(t.id);
-                                    const isSaving = savingRatios.has(t.id);
                                     const currentValue =
                                       latest && latest.valor != null
                                         ? String(latest.valor)
@@ -654,46 +695,14 @@ export default function RatiosCalculation() {
                                                 e.target.value
                                               )
                                             }
-                                            disabled={isSaving}
+                                            disabled={savingBulk}
                                           />
                                         ) : (
                                           <div className="w-28 px-3 py-2 text-sm bg-muted rounded-md">
                                             {displayValue || "—"}
                                           </div>
                                         )}
-                                        {isEditing ? (
-                                          <Button
-                                            size="sm"
-                                            onClick={() => handleRowSave(t.id)}
-                                            disabled={
-                                              isSaving ||
-                                              !selectedMachine ||
-                                              !currentModeloId
-                                            }
-                                          >
-                                            {isSaving ? (
-                                              <div className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent mr-2" />
-                                            ) : (
-                                              <Save className="mr-2 h-4 w-4" />
-                                            )}
-                                            Guardar
-                                          </Button>
-                                        ) : (
-                                          <Button
-                                            size="sm"
-                                            variant="outline"
-                                            onClick={() =>
-                                              handleEditRatio(t.id)
-                                            }
-                                            disabled={
-                                              !selectedMachine ||
-                                              !currentModeloId
-                                            }
-                                          >
-                                            <Edit2 className="mr-2 h-4 w-4" />
-                                            Editar
-                                          </Button>
-                                        )}
+                                        {/* Sin botones individuales; se usa Guardar Cambios global */}
                                       </div>
                                     );
                                   })}

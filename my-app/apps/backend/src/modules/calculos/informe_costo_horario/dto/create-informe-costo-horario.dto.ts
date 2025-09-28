@@ -115,4 +115,13 @@ export class CreateInformeCostoHorarioDto {
   @IsNumber()
   @IsOptional()
   costoMCorrMayores?: number = 0;
+
+  @ApiProperty({
+    example: 8.8,
+    description: 'Costo mano de obra técnico (USD/hr)',
+    required: false,
+  })
+  @IsNumber()
+  @IsOptional()
+  mano_de_obra_tecnico?: number = 0;
 }

@@ -53,12 +53,10 @@ export class ModelosService {
         }
       }
 
-      // **CONVERSIÓN DEL PORCENTAJE A DECIMAL**
+      // **SIN CONVERSIÓN - EL FRONTEND YA ENVÍA DECIMALES**
       const modeloData = {
         ...createModeloDto,
-        porcentaje_utilidad: createModeloDto.porcentaje_utilidad
-          ? createModeloDto.porcentaje_utilidad / 100
-          : 0, // Convierte 10 a 0.10
+        porcentaje_utilidad: createModeloDto.porcentaje_utilidad || 0,
       };
 
       const modelo = await this.prisma.modelos.create({
@@ -72,20 +70,16 @@ export class ModelosService {
 
       this.logger.log(`Modelo creado con ID: ${modelo.id}`);
 
-      // **CONVERTIR DE VUELTA PARA LA RESPUESTA**
-      return {
-        ...modelo,
-        porcentaje_utilidad: modelo.porcentaje_utilidad * 100, // Convierte 0.10 de vuelta a 10
-      };
+      // **SIN CONVERSIÓN - DEVOLVER VALOR DIRECTO**
+      return modelo;
     } catch (error) {
       this.logger.error(`Error al crear modelo: ${error.message}`);
 
       if (error instanceof PrismaClientKnownRequestError) {
-        if (error.code === 'P2002') {
-          throw new BadRequestException(
-            'Ya existe un modelo con ese nombre para esta marca',
-          );
-        }
+        // Nota: Se elimina la validación/mapeo específico de duplicados (P2002)
+        // para permitir nombres repetidos en el backend. Si existe una
+        // restricción única en la base de datos, habrá que eliminarla vía
+        // migración SQL. Mantenemos sólo el manejo de FK (P2003).
         if (error.code === 'P2003') {
           throw new BadRequestException(
             'Error de referencia: verificar IDs de marca, equipo o flota',
@@ -122,11 +116,8 @@ export class ModelosService {
       orderBy: [{ marca: { nombre: 'asc' } }, { nombre: 'asc' }],
     });
 
-    // **CONVERTIR PORCENTAJES PARA LA RESPUESTA**
-    return modelos.map((modelo) => ({
-      ...modelo,
-      porcentaje_utilidad: modelo.porcentaje_utilidad * 100,
-    }));
+    // **SIN CONVERSIÓN - DEVOLVER VALORES DIRECTOS**
+    return modelos;
   }
 
   async findOne(id: number) {
@@ -175,11 +166,8 @@ export class ModelosService {
       throw new NotFoundException(`Modelo con ID ${id} no encontrado`);
     }
 
-    // **CONVERTIR PORCENTAJE PARA LA RESPUESTA**
-    return {
-      ...modelo,
-      porcentaje_utilidad: modelo.porcentaje_utilidad * 100,
-    };
+    // **SIN CONVERSIÓN - DEVOLVER VALOR DIRECTO**
+    return modelo;
   }
 
   async update(id: number, updateModeloDto: UpdateModeloDto) {
@@ -223,12 +211,8 @@ export class ModelosService {
         }
       }
 
-      // **CONVERSIÓN DE PORCENTAJE ANTES DE ACTUALIZAR**
+      // **SIN CONVERSIÓN - USAR VALOR DIRECTO**
       const dataToUpdate = { ...updateModeloDto };
-      if (dataToUpdate.porcentaje_utilidad !== undefined) {
-        dataToUpdate.porcentaje_utilidad =
-          dataToUpdate.porcentaje_utilidad / 100;
-      }
 
       const modelo = await this.prisma.modelos.update({
         where: { id },
@@ -242,20 +226,13 @@ export class ModelosService {
 
       this.logger.log(`Modelo actualizado: ${modelo.nombre}`);
 
-      // **CONVERTIR PORCENTAJE PARA LA RESPUESTA**
-      return {
-        ...modelo,
-        porcentaje_utilidad: modelo.porcentaje_utilidad * 100,
-      };
+      // **SIN CONVERSIÓN - DEVOLVER VALOR DIRECTO**
+      return modelo;
     } catch (error) {
       this.logger.error(`Error al actualizar modelo: ${error.message}`);
 
       if (error instanceof PrismaClientKnownRequestError) {
-        if (error.code === 'P2002') {
-          throw new BadRequestException(
-            'Ya existe un modelo con ese nombre para esta marca',
-          );
-        }
+        // Se elimina el mapeo del error P2002 (duplicado) para no bloquear por nombre repetido
         if (error.code === 'P2003') {
           throw new BadRequestException(
             'Error de referencia: verificar IDs de marca, equipo o flota',
@@ -367,7 +344,7 @@ export class ModelosService {
       total_modelos: totalModelos,
       modelos_con_maquinas: modelosConMaquinas,
       modelos_sin_maquinas: totalModelos - modelosConMaquinas,
-      promedio_utilidad: (promedioUtilidad._avg.porcentaje_utilidad || 0) * 100, // **CONVERTIR A PORCENTAJE**
+      promedio_utilidad: promedioUtilidad._avg.porcentaje_utilidad || 0, // **SIN CONVERSIÓN**
       top_marcas: topMarcas,
     };
   }
@@ -392,11 +369,8 @@ export class ModelosService {
       },
     });
 
-    // **CONVERTIR PORCENTAJES PARA LA RESPUESTA**
-    return modelos.map((modelo) => ({
-      ...modelo,
-      porcentaje_utilidad: modelo.porcentaje_utilidad * 100,
-    }));
+    // **SIN CONVERSIÓN - DEVOLVER VALORES DIRECTOS**
+    return modelos;
   }
 
   async findByEquipo(equipoId: number) {
@@ -419,11 +393,8 @@ export class ModelosService {
       },
     });
 
-    // **CONVERTIR PORCENTAJES PARA LA RESPUESTA**
-    return modelos.map((modelo) => ({
-      ...modelo,
-      porcentaje_utilidad: modelo.porcentaje_utilidad * 100,
-    }));
+    // **SIN CONVERSIÓN - DEVOLVER VALORES DIRECTOS**
+    return modelos;
   }
 
   async findByFlota(flotaId: number) {
@@ -446,10 +417,7 @@ export class ModelosService {
       },
     });
 
-    // **CONVERTIR PORCENTAJES PARA LA RESPUESTA**
-    return modelos.map((modelo) => ({
-      ...modelo,
-      porcentaje_utilidad: modelo.porcentaje_utilidad * 100,
-    }));
+    // **SIN CONVERSIÓN - DEVOLVER VALORES DIRECTOS**
+    return modelos;
   }
 }

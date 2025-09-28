@@ -1,5 +1,15 @@
 // Tipos para Informe de Costo Horario
 
+// Interfaz para las versiones/posesiones de una máquina
+export interface PosesionVersion {
+  id: number;
+  machine_id: number;
+  fecha_calculo: string;
+  comentario?: string | null;
+  usuario_id?: string | null;
+  numero_escenarios: number;
+}
+
 export interface HourlyCostInput {
   machineId: number;
   posesionId?: number;
@@ -12,6 +22,7 @@ export interface HourlyCostInput {
   usuarioId?: string;
   incluyeGastosDistribuibles?: boolean;
   costoMCorrMayores?: number;
+  mano_de_obra_tecnico?: number;
 }
 
 export interface HourlyCostScenario {
@@ -52,6 +63,11 @@ export interface HourlyCostScenario {
     mantenimientoPreventivo: number;
     subtotalVariable: number;
     totalCostoVariable: number;
+    manoDeObraTecnico: number;
+    // NOTA: Los desgloses 4.1.1 / 4.1.2 / 4.1.3 y 4.2.x (lubricantes, filtros, materiales, etc.)
+    // no vienen como campos individuales aquí. Se obtienen desde seccion2.ratiosUsdHr
+    // con las claves: costoMPrevLubricantes, costoMPrevFiltros, costoMPrevMaterialesFerreteria,
+    // costoMCorrMaterialesElectricos, costoMCorrMangueras, costoMCorrMenores, costoMCorrMayores.
   };
   horasMinimas: number;
   factorMercado: number;
@@ -79,6 +95,8 @@ export interface HourlyCostReportResponse {
       gradoOperatividad: number;
     }>;
   };
+  // Para respuestas de preview que retornan escenarios directamente
+  escenarios?: HourlyCostScenario[];
   tasa_financiamiento_usada: number;
   anios_financiamiento: number;
   tasa_seguro_usada: number;

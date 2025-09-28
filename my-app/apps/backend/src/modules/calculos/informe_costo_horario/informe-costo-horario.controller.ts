@@ -48,6 +48,7 @@ export class InformeCostoHorarioController {
           usuarioId: 'user-uuid',
           incluyeGastosDistribuibles: false,
           costoMCorrMayores: 0.9,
+          mano_de_obra_tecnico: 8.8,
         },
       },
     },
@@ -94,6 +95,7 @@ export class InformeCostoHorarioController {
           usuarioId: 'user-uuid',
           incluyeGastosDistribuibles: false,
           costoMCorrMayores: 0.9,
+          mano_de_obra_tecnico: 8.8,
         },
       },
     },
@@ -284,5 +286,120 @@ export class InformeCostoHorarioController {
       posesionId,
       machineId,
     );
+  }
+
+  @Get('machines/latest-reports')
+  @ApiOperation({
+    summary: 'Obtener todas las máquinas con sus últimos reportes',
+    description:
+      'Recupera todas las máquinas que tienen reportes de costo horario junto con información del reporte más reciente de cada una.',
+  })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description:
+      'Lista de máquinas con sus últimos reportes obtenida exitosamente',
+    schema: {
+      example: [
+        {
+          machine: {
+            id: 4,
+            item: 4,
+            equipo: 'Rockdrill',
+            marca: 'EPIROC',
+            modelo: 'SMARTROC',
+            horometroInicial: 0,
+            estado: 'Capex_Nuevo',
+            idEquipo: 'Rockdrill EPIROC SmartRoc',
+            valorSimilarNuevo: 1150000,
+            politicaDepreciacion: 10,
+            vidaUtil: 20000,
+          },
+          latestReport: {
+            id: 15,
+            fechaCalculo: '2025-09-16T10:30:00.000Z',
+            tasaFinanciamiento: 0.09,
+            aniosFinanciamiento: 3,
+            tasaSeguro: 0.01,
+            aniosSeguro: 1,
+            mesPorAnio: 12,
+            usuarioId: 'user-uuid',
+          },
+          hasReports: true,
+          totalReports: 1,
+        },
+      ],
+    },
+  })
+  @ApiResponse({
+    status: HttpStatus.INTERNAL_SERVER_ERROR,
+    description: 'Error interno del servidor',
+  })
+  async getAllMachinesWithLatestReports() {
+    return this.service.getAllMachinesWithLatestReports();
+  }
+
+  @Get('machines/resumen-reports')
+  @ApiOperation({
+    summary: 'Obtener todas las máquinas con resumen de sus últimos reportes',
+    description:
+      'Recupera todas las máquinas que tienen reportes de costo horario junto con el resumen completo del reporte más reciente de cada una.',
+  })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description:
+      'Lista de máquinas con resumen de sus últimos reportes obtenida exitosamente',
+    schema: {
+      example: [
+        {
+          machine: {
+            id: 4,
+            item: 4,
+            equipo: 'Rockdrill',
+            marca: 'EPIROC',
+            modelo: 'SMARTROC',
+            estado: 'Capex_Nuevo',
+            idEquipo: 'Rockdrill EPIROC SmartRoc',
+            valorSimilarNuevo: 1150000,
+          },
+          latestReport: {
+            id: 15,
+            fechaCalculo: '2025-09-16T10:30:00.000Z',
+            tasaFinanciamiento: 0.09,
+            aniosFinanciamiento: 3,
+          },
+          resumen: [
+            {
+              'V.Adq ($)': 1150000,
+              Hmin: 500,
+              D: 37.43,
+              F: 9.36,
+              S: 109.05,
+              Mp: 10.0,
+              Mc: 15.5,
+              Posesión: 155.84,
+              RyM: 35.2,
+              Costo_Hr: 199.84,
+              Tarifa: 219.82,
+            },
+          ],
+          parametros: {
+            machineId: 4,
+            posesionId: 1,
+            tasaFinanciamiento: 0.09,
+            porcentajeUtilidad: 0.1,
+            fechaCalculo: '2025-09-16T10:30:00.000Z',
+          },
+          hasReports: true,
+          totalReports: 1,
+        },
+      ],
+    },
+  })
+  @ApiResponse({
+    status: HttpStatus.INTERNAL_SERVER_ERROR,
+    description: 'Error interno del servidor',
+  })
+  async getAllMachinesResumenReports() {
+    return this.service.getAllMachinesResumenReports();
   }
 }

@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Edit2, Save, X } from "lucide-react";
+import { Edit2, Save, X, Info } from "lucide-react";
 import { RatioType, RatioVersion } from "../models/types";
 
 interface EditableRatiosHistoryProps {
@@ -258,22 +258,9 @@ export default function EditableRatiosHistory({
                           </div>
 
                           {isEditMode && (
-                            <div className="flex justify-end pt-2">
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                onClick={() => handleSaveRatio(tipo.id)}
-                                disabled={isLoading || !currentModeloId}
-                              >
-                                {isLoading ? (
-                                  <div className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
-                                ) : (
-                                  <Save className="h-4 w-4" />
-                                )}
-                                <span className="ml-2">
-                                  {latest ? "Actualizar" : "Crear"}
-                                </span>
-                              </Button>
+                            <div className="flex items-center justify-end pt-2 text-xs text-muted-foreground">
+                              <Info className="h-4 w-4 mr-2" />
+                              Los cambios se guardan con "Guardar Todo" arriba
                             </div>
                           )}
                         </div>

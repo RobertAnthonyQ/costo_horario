@@ -10,6 +10,8 @@ import {
   PossessionCalculation,
   RatiosCalculation,
   HourlyCostReport,
+  PICsCalculation,
+  Reports,
   NotFound,
 } from "./pages";
 import { ConfigurationPage } from "./pages/configuration";
@@ -35,6 +37,7 @@ const App = () => (
             <Route path="/ratios" element={<RatiosCalculation />} />
             <Route path="/ratios/compare" element={<RatiosCalculation />} />
             <Route path="/hourly-cost" element={<HourlyCostReport />} />
+            <Route path="/pics" element={<PICsCalculation />} />
             <Route
               path="/calculation-history"
               element={
@@ -43,14 +46,7 @@ const App = () => (
                 </div>
               }
             />
-            <Route
-              path="/reports"
-              element={
-                <div className="p-8 text-center text-muted-foreground">
-                  Reportes y Análisis - Próximamente
-                </div>
-              }
-            />
+            <Route path="/reports" element={<Reports />} />
             <Route path="/settings" element={<ConfigurationPage />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />

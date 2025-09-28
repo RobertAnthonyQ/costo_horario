@@ -4,9 +4,25 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogDescription,
 } from "@/components/ui/dialog";
 import { HourlyCostReportResponse } from "../models/types";
 import { LargeReportTable } from "./LargeReportTable";
+
+// Helper para formatear números con separador de miles (coma) y 2 decimales
+// Ej: 12345.6 -> 12,345.60
+const formatNumber = (
+  value: number | null | undefined,
+  opts: Intl.NumberFormatOptions = {}
+) => {
+  if (value === null || value === undefined || isNaN(value as number))
+    return "-";
+  return new Intl.NumberFormat("en-US", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+    ...opts,
+  }).format(value as number);
+};
 
 interface ReportDisplayProps {
   report: HourlyCostReportResponse | null;
@@ -21,6 +37,13 @@ export function ReportDisplay({
   showReportModal,
   onCloseModal,
 }: ReportDisplayProps) {
+  console.log("🎭 ReportDisplay recibió report:", report);
+  console.log("🎭 ReportDisplay escenarios disponibles:", report?.escenarios);
+  console.log(
+    "🎭 ReportDisplay resultado_completo_json:",
+    report?.resultado_completo_json
+  );
+
   if (!report) {
     return null;
   }
@@ -32,6 +55,10 @@ export function ReportDisplay({
         <DialogContent className="max-w-[1100px] max-h-[85vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Informe Costo Horario - Detalle</DialogTitle>
+            <DialogDescription>
+              Vista detallada de los escenarios de costo horario calculados para
+              la máquina seleccionada.
+            </DialogDescription>
           </DialogHeader>
           <div className="flex items-center justify-between p-3 rounded-md bg-muted/30 mb-4">
             <div>
@@ -49,7 +76,10 @@ export function ReportDisplay({
               </div>
             </div>
             <div className="text-sm text-muted-foreground">
-              Fecha: {new Date(report.fecha_calculo).toLocaleString("es-ES")}
+              Fecha:{" "}
+              {report.fecha_calculo
+                ? new Date(report.fecha_calculo).toLocaleString("es-ES")
+                : "Cálculo actual"}
             </div>
           </div>
           <LargeReportTable report={report} />
@@ -75,7 +105,10 @@ export function ReportDisplay({
                 </div>
               </div>
               <div className="text-sm text-muted-foreground">
-                Fecha: {new Date(report.fecha_calculo).toLocaleString("es-ES")}
+                Fecha:{" "}
+                {report.fecha_calculo
+                  ? new Date(report.fecha_calculo).toLocaleString("es-ES")
+                  : "Cálculo actual"}
               </div>
             </div>
           )}
@@ -90,17 +123,23 @@ export function ReportDisplay({
                 </tr>
               </thead>
               <tbody>
-                {report.resultado_completo_json.escenarios.map((esc) => (
+                {(
+                  report.resultado_completo_json?.escenarios ||
+                  report.escenarios ||
+                  []
+                ).map((esc) => (
                   <tr key={esc.horasMinimas} className="border-t">
-                    <td className="p-3">{esc.horasMinimas}</td>
                     <td className="p-3">
-                      {esc.seccion3.posesion.totalCostoFijo.toFixed(2)}
+                      {new Intl.NumberFormat("en-US").format(esc.horasMinimas)}
                     </td>
                     <td className="p-3">
-                      {esc.seccion4.totalCostoVariable.toFixed(2)}
+                      {formatNumber(esc.seccion3?.posesion?.totalCostoFijo)}
+                    </td>
+                    <td className="p-3">
+                      {formatNumber(esc.seccion4?.totalCostoVariable)}
                     </td>
                     <td className="p-3 font-semibold">
-                      {esc.totales.fijosMasVariables.toFixed(2)}
+                      {formatNumber(esc.totales?.fijosMasVariables)}
                     </td>
                   </tr>
                 ))}
