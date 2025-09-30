@@ -1,10 +1,14 @@
-/* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-return */
+/* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call */
 import { Injectable, NotFoundException, Logger } from '@nestjs/common';
 import { PrismaService } from '../../../core/prisma/prisma.service';
 import { CreateMachinesDto } from './dto/create-machines.dto';
 import { UpdateMachinesDto } from './dto/update-machines.dto';
 import { PrismaClientKnownRequestError } from '@prisma/client/runtime/library';
 import { ModelosService } from '../modelos/modelos.service';
+import {
+  serializeBigInt,
+  serializeBigIntArray,
+} from '../../../utils/bigint-serializer';
 
 // Tipo flexible para simplificar reglas del linter en métodos con includes complejos
 type MachineWithRelations = any;
@@ -31,7 +35,7 @@ export class MachinesService {
         return isNaN(num) ? null : num;
       };
 
-      let modeloId = createMachinesDto.modelo_id;
+      let modeloId: number | bigint | undefined = createMachinesDto.modelo_id;
       let modeloCreated: any = null;
 
       // Si se proporciona modelo_data, crear el modelo automáticamente
@@ -93,7 +97,7 @@ export class MachinesService {
       } else if (modeloId) {
         // Para máquina con modelo existente
         const modeloExistente = await this.prisma.modelos.findUnique({
-          where: { id: modeloId },
+          where: { id: Number(modeloId) },
           include: {
             marca: true,
             equipo: true,
@@ -139,7 +143,7 @@ export class MachinesService {
 
       // Manejar modelo_id - conectar si se proporciona un valor válido
       if (modeloId !== undefined && modeloId !== null) {
-        cleanData.modelo = { connect: { id: modeloId } };
+        cleanData.modelo = { connect: { id: Number(modeloId) } };
       }
 
       this.logger.debug(
@@ -169,7 +173,9 @@ export class MachinesService {
       this.logger.log(
         `Machine created with ID: ${machine.id}, Code: ${idEquipoInterno}`,
       );
-      return machineWithRelations;
+
+      // Convertir automáticamente todos los BigInt a Number
+      return serializeBigInt(machineWithRelations);
     } catch (error: unknown) {
       if (error instanceof PrismaClientKnownRequestError) {
         if (error.code === 'P2003') {
@@ -198,7 +204,8 @@ export class MachinesService {
         },
       });
 
-      return machines;
+      // Convertir automáticamente todos los BigInt a Number
+      return serializeBigIntArray(machines);
     } catch (error: unknown) {
       this.logger.error('Error finding all machines:', error);
       throw error;
@@ -224,7 +231,8 @@ export class MachinesService {
         throw new NotFoundException(`Machine with ID ${id} not found`);
       }
 
-      return machine;
+      // Convertir automáticamente todos los BigInt a Number
+      return serializeBigInt(machine);
     } catch (error: unknown) {
       if (error instanceof NotFoundException) {
         throw error;
@@ -258,7 +266,9 @@ export class MachinesService {
       // Manejar modelo_id opcional en actualización
       if (updateMachinesDto.modelo_id !== undefined) {
         if (updateMachinesDto.modelo_id !== null) {
-          updateData.modelo = { connect: { id: updateMachinesDto.modelo_id } };
+          updateData.modelo = {
+            connect: { id: Number(updateMachinesDto.modelo_id) },
+          };
         } else {
           updateData.modelo = { disconnect: true };
         }
@@ -271,13 +281,17 @@ export class MachinesService {
           modelo: {
             include: {
               marca: true,
+              equipo: true,
+              flota: true,
             },
           },
         },
       });
 
       this.logger.log(`Machine ${id} updated successfully`);
-      return machine;
+
+      // Convertir automáticamente todos los BigInt a Number
+      return serializeBigInt(machine);
     } catch (error: unknown) {
       if (error instanceof NotFoundException) {
         throw error;
@@ -337,7 +351,8 @@ export class MachinesService {
         },
       });
 
-      return machines;
+      // Convertir automáticamente todos los BigInt a Number
+      return serializeBigIntArray(machines);
     } catch (error: unknown) {
       this.logger.error(`Error finding machines by modelo ${modeloId}:`, error);
       throw error;
@@ -362,7 +377,8 @@ export class MachinesService {
         },
       });
 
-      return machines;
+      // Convertir automáticamente todos los BigInt a Number
+      return serializeBigIntArray(machines);
     } catch (error: unknown) {
       this.logger.error(`Error finding machines by estado ${estado}:`, error);
       throw error;
@@ -420,7 +436,8 @@ export class MachinesService {
         },
       });
 
-      return machines;
+      // Convertir automáticamente todos los BigInt a Number
+      return serializeBigIntArray(machines);
     } catch (error: unknown) {
       this.logger.error('Error finding machines with filters:', error);
       throw error;

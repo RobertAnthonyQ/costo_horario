@@ -3,6 +3,10 @@ import { PrismaService } from '../../../core/prisma/prisma.service';
 import { CreateComponenteDto } from './dto/create-componente.dto';
 import { UpdateComponenteDto } from './dto/update-componente.dto';
 import { PrismaClientKnownRequestError } from '@prisma/client/runtime/library';
+import {
+  serializeBigInt,
+  serializeBigIntArray,
+} from '../../../utils/bigint-serializer';
 
 @Injectable()
 export class ComponentesService {
@@ -19,7 +23,7 @@ export class ComponentesService {
       });
 
       this.logger.log(`Componente creado con ID: ${componente.id}`);
-      return componente;
+      return serializeBigInt(componente);
     } catch (error) {
       this.logger.error(`Error al crear componente: ${error.message}`);
 
@@ -35,7 +39,7 @@ export class ComponentesService {
   async findAll() {
     this.logger.log('Obteniendo todos los componentes');
 
-    return this.prisma.componentes.findMany({
+    const componentes = await this.prisma.componentes.findMany({
       include: {
         modelo_componentes_historico: {
           include: {
@@ -53,6 +57,8 @@ export class ComponentesService {
         nombre: 'asc',
       },
     });
+
+    return serializeBigIntArray(componentes);
   }
 
   async findOne(id: number) {
@@ -79,7 +85,7 @@ export class ComponentesService {
       throw new NotFoundException(`Componente con ID ${id} no encontrado`);
     }
 
-    return componente;
+    return serializeBigInt(componente);
   }
 
   async update(id: number, updateComponenteDto: UpdateComponenteDto) {
@@ -98,7 +104,7 @@ export class ComponentesService {
       });
 
       this.logger.log(`Componente actualizado: ${componente.nombre}`);
-      return componente;
+      return serializeBigInt(componente);
     } catch (error) {
       this.logger.error(`Error al actualizar componente: ${error.message}`);
 
@@ -135,7 +141,7 @@ export class ComponentesService {
       });
 
       this.logger.log(`Componente eliminado: ${componente.nombre}`);
-      return componente;
+      return serializeBigInt(componente);
     } catch (error) {
       this.logger.error(`Error al eliminar componente: ${error.message}`);
       throw error;
@@ -185,7 +191,7 @@ export class ComponentesService {
   async findByModelo(modeloId: number) {
     this.logger.log(`Buscando componentes del modelo ID: ${modeloId}`);
 
-    return this.prisma.componentes.findMany({
+    const componentes = await this.prisma.componentes.findMany({
       where: {
         modelo_componentes_historico: {
           some: {
@@ -205,5 +211,7 @@ export class ComponentesService {
         },
       },
     });
+
+    return serializeBigIntArray(componentes);
   }
 }

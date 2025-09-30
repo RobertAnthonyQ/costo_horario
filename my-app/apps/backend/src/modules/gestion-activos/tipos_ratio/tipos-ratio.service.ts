@@ -8,6 +8,10 @@ import { PrismaService } from '../../../core/prisma/prisma.service';
 import { CreateTiposRatioDto } from './dto/create-tipos-ratio.dto';
 import { UpdateTiposRatioDto } from './dto/update-tipos-ratio.dto';
 import { PrismaClientKnownRequestError } from '@prisma/client/runtime/library';
+import {
+  serializeBigInt,
+  serializeBigIntArray,
+} from '../../../utils/bigint-serializer';
 
 @Injectable()
 export class TiposRatioService {
@@ -24,7 +28,7 @@ export class TiposRatioService {
       });
 
       this.logger.log(`Tipo de ratio creado con ID: ${tipoRatio.id}`);
-      return tipoRatio;
+      return serializeBigInt(tipoRatio);
     } catch (error) {
       this.logger.error(`Error al crear tipo de ratio: ${error.message}`);
 
@@ -42,7 +46,7 @@ export class TiposRatioService {
   async findAll() {
     this.logger.log('Obteniendo todos los tipos de ratio');
 
-    return this.prisma.tiposRatio.findMany({
+    const tiposRatio = await this.prisma.tiposRatio.findMany({
       include: {
         _count: {
           select: {
@@ -52,6 +56,8 @@ export class TiposRatioService {
       },
       orderBy: [{ categoria: 'asc' }, { nombre: 'asc' }],
     });
+
+    return serializeBigIntArray(tiposRatio);
   }
 
   async findOne(id: number) {
@@ -80,7 +86,7 @@ export class TiposRatioService {
       throw new NotFoundException(`Tipo de ratio con ID ${id} no encontrado`);
     }
 
-    return tipoRatio;
+    return serializeBigInt(tipoRatio);
   }
 
   async update(id: number, updateTiposRatioDto: UpdateTiposRatioDto) {
@@ -103,7 +109,7 @@ export class TiposRatioService {
       });
 
       this.logger.log(`Tipo de ratio actualizado: ${tipoRatio.nombre}`);
-      return tipoRatio;
+      return serializeBigInt(tipoRatio);
     } catch (error) {
       this.logger.error(`Error al actualizar tipo de ratio: ${error.message}`);
 
@@ -141,7 +147,7 @@ export class TiposRatioService {
       });
 
       this.logger.log(`Tipo de ratio eliminado: ${tipoRatio.nombre}`);
-      return tipoRatio;
+      return serializeBigInt(tipoRatio);
     } catch (error) {
       this.logger.error(`Error al eliminar tipo de ratio: ${error.message}`);
       throw error;
@@ -209,7 +215,7 @@ export class TiposRatioService {
   async findByCategoria(categoria: string) {
     this.logger.log(`Buscando tipos de ratio por categoría: ${categoria}`);
 
-    return this.prisma.tiposRatio.findMany({
+    const tiposRatio = await this.prisma.tiposRatio.findMany({
       where: { categoria: categoria as any },
       include: {
         _count: {
@@ -222,5 +228,7 @@ export class TiposRatioService {
         nombre: 'asc',
       },
     });
+
+    return serializeBigIntArray(tiposRatio);
   }
 }

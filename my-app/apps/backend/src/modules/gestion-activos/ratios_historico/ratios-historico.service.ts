@@ -13,6 +13,10 @@ import {
   RatiosVersion,
   RatioVersionItem,
 } from './interfaces/ratios-version.interface';
+import {
+  serializeBigInt,
+  serializeBigIntArray,
+} from '../../../utils/bigint-serializer';
 
 @Injectable()
 export class RatiosHistoricoService {
@@ -333,7 +337,7 @@ export class RatiosHistoricoService {
       this.logger.log(
         `Registro creado exitosamente con ID: ${ratioHistorico.id}`,
       );
-      return ratioHistorico;
+      return serializeBigInt(ratioHistorico);
     } catch (error) {
       this.logger.error('Error en createDirecto:', {
         message: error.message,
@@ -458,7 +462,7 @@ export class RatiosHistoricoService {
   async findAll() {
     this.logger.log('Obteniendo todos los ratios históricos');
 
-    return this.prisma.ratiosHistorico.findMany({
+    const ratios = await this.prisma.ratiosHistorico.findMany({
       include: {
         modelo: {
           include: {
@@ -475,6 +479,8 @@ export class RatiosHistoricoService {
         { tipo_ratio: { nombre: 'asc' } },
       ],
     });
+
+    return serializeBigIntArray(ratios);
   }
 
   async findOne(id: number) {
@@ -505,7 +511,7 @@ export class RatiosHistoricoService {
       throw new NotFoundException(`Ratio histórico con ID ${id} no encontrado`);
     }
 
-    return ratioHistorico;
+    return serializeBigInt(ratioHistorico);
   }
 
   async update(id: number, updateRatiosHistoricoDto: UpdateRatiosHistoricoDto) {
@@ -578,7 +584,7 @@ export class RatiosHistoricoService {
       });
 
       this.logger.log(`Ratio histórico actualizado: ${ratioHistorico.id}`);
-      return ratioHistorico;
+      return serializeBigInt(ratioHistorico);
     } catch (error) {
       this.logger.error(
         `Error al actualizar ratio histórico: ${error.message}`,
@@ -612,7 +618,7 @@ export class RatiosHistoricoService {
       });
 
       this.logger.log(`Ratio histórico eliminado: ${ratioHistorico.id}`);
-      return ratioHistorico;
+      return serializeBigInt(ratioHistorico);
     } catch (error) {
       this.logger.error(`Error al eliminar ratio histórico: ${error.message}`);
       throw error;
@@ -622,7 +628,7 @@ export class RatiosHistoricoService {
   async findByModelo(modeloId: number) {
     this.logger.log(`Buscando ratios históricos del modelo ID: ${modeloId}`);
 
-    return this.prisma.ratiosHistorico.findMany({
+    const ratios = await this.prisma.ratiosHistorico.findMany({
       where: { modelo_id: modeloId },
       include: {
         modelo: {
@@ -635,6 +641,8 @@ export class RatiosHistoricoService {
       },
       orderBy: [{ fecha_efectiva: 'desc' }, { tipo_ratio: { nombre: 'asc' } }],
     });
+
+    return serializeBigIntArray(ratios);
   }
 
   async findByTipoRatio(tipoRatioId: number) {
@@ -642,7 +650,7 @@ export class RatiosHistoricoService {
       `Buscando ratios históricos del tipo de ratio ID: ${tipoRatioId}`,
     );
 
-    return this.prisma.ratiosHistorico.findMany({
+    const ratios = await this.prisma.ratiosHistorico.findMany({
       where: { tipo_ratio_id: tipoRatioId },
       include: {
         modelo: {
@@ -656,6 +664,8 @@ export class RatiosHistoricoService {
       },
       orderBy: [{ fecha_efectiva: 'desc' }, { modelo: { nombre: 'asc' } }],
     });
+
+    return serializeBigIntArray(ratios);
   }
 
   async findByFechaRange(fechaDesde: string, fechaHasta: string) {
@@ -666,7 +676,7 @@ export class RatiosHistoricoService {
     const fechaDesdeDate = new Date(fechaDesde);
     const fechaHastaDate = new Date(fechaHasta);
 
-    return this.prisma.ratiosHistorico.findMany({
+    const ratios = await this.prisma.ratiosHistorico.findMany({
       where: {
         fecha_efectiva: {
           gte: fechaDesdeDate,
@@ -688,6 +698,8 @@ export class RatiosHistoricoService {
         { tipo_ratio: { nombre: 'asc' } },
       ],
     });
+
+    return serializeBigIntArray(ratios);
   }
 
   async getLatestByModelo(modeloId: number) {
@@ -720,7 +732,7 @@ export class RatiosHistoricoService {
       }
     }
 
-    return Array.from(ratiosMap.values());
+    return serializeBigIntArray(Array.from(ratiosMap.values()));
   }
 
   /**
@@ -729,7 +741,7 @@ export class RatiosHistoricoService {
   async findByLugarOperacion(lugarOperacion: string) {
     this.logger.log(`Buscando ratios históricos del lugar: ${lugarOperacion}`);
 
-    return this.prisma.ratiosHistorico.findMany({
+    const ratios = await this.prisma.ratiosHistorico.findMany({
       where: {
         lugar_operacion: {
           contains: lugarOperacion,
@@ -748,6 +760,8 @@ export class RatiosHistoricoService {
       },
       orderBy: [{ fecha_efectiva: 'desc' }, { modelo: { nombre: 'asc' } }],
     });
+
+    return serializeBigIntArray(ratios);
   }
 
   /**
@@ -770,7 +784,7 @@ export class RatiosHistoricoService {
       };
     }
 
-    return this.prisma.ratiosHistorico.findMany({
+    const versiones = await this.prisma.ratiosHistorico.findMany({
       where: whereCondition,
       select: {
         id: true,
@@ -815,6 +829,8 @@ export class RatiosHistoricoService {
         { modelo: { nombre: 'asc' } },
       ],
     });
+
+    return serializeBigIntArray(versiones);
   }
 
   /**
@@ -838,7 +854,7 @@ export class RatiosHistoricoService {
       };
     }
 
-    return this.prisma.ratiosHistorico.findMany({
+    const historiales = await this.prisma.ratiosHistorico.findMany({
       where: whereCondition,
       select: {
         id: true,
@@ -886,6 +902,8 @@ export class RatiosHistoricoService {
         { modelo: { nombre: 'asc' } },
       ],
     });
+
+    return serializeBigIntArray(historiales);
   }
 
   /**
@@ -922,7 +940,7 @@ export class RatiosHistoricoService {
       },
     });
 
-    return ratiosConVersiones;
+    return serializeBigIntArray(ratiosConVersiones);
   }
 
   /**
@@ -955,7 +973,7 @@ export class RatiosHistoricoService {
       },
     });
 
-    return ratios;
+    return serializeBigIntArray(ratios);
   }
 
   async getStatistics() {
@@ -1004,7 +1022,11 @@ export class RatiosHistoricoService {
 
     const tiposRatioConStats = await this.prisma.tiposRatio.findMany({
       where: {
-        id: { in: ratiosPorTipo.map((r) => r.tipo_ratio_id) },
+        id: {
+          in: ratiosPorTipo
+            .map((r) => r.tipo_ratio_id)
+            .filter((id): id is bigint => id !== null),
+        },
       },
       select: { id: true, nombre: true, categoria: true },
     });

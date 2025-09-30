@@ -3,6 +3,10 @@ import { PrismaService } from '../../../core/prisma/prisma.service';
 import { ModeloComponentesHistoricoService } from '../../gestion-activos/modelo_componentes_historico/modelo-componentes-historico.service';
 import { PosesionService } from '../posesion/posesion.service';
 import { CreateInformeCostoHorarioDto } from './dto/create-informe-costo-horario.dto';
+import {
+  serializeBigInt,
+  serializeBigIntArray,
+} from '../../../utils/bigint-serializer';
 
 @Injectable()
 export class InformeCostoHorarioService {
@@ -23,17 +27,21 @@ export class InformeCostoHorarioService {
     // Mantener solo el más reciente por tipo_ratio_id
     const latestByTipoId = new Map<number, (typeof ratios)[number]>();
     for (const r of ratios) {
-      if (!latestByTipoId.has(r.tipo_ratio_id)) {
-        latestByTipoId.set(r.tipo_ratio_id, r);
+      if (r.tipo_ratio_id && !latestByTipoId.has(Number(r.tipo_ratio_id))) {
+        latestByTipoId.set(Number(r.tipo_ratio_id), r);
       }
     }
 
     // Mapa por nombre normalizado
     const nombreToValor: Record<string, number> = {};
     for (const r of latestByTipoId.values()) {
-      const key = r.tipo_ratio.nombre.trim().toLowerCase();
-      nombreToValor[key] = r.valor ?? 0;
-      console.log(`[DEBUG] Ratio encontrado: "${key}" = ${r.valor ?? 0}`);
+      if (r.tipo_ratio) {
+        const key = r.tipo_ratio.nombre.trim().toLowerCase();
+        nombreToValor[key] = Number(r.valor) || 0;
+        console.log(
+          `[DEBUG] Ratio encontrado: "${key}" = ${Number(r.valor ?? 0)}`,
+        );
+      }
     }
 
     // Extraer valores con llaves estándar usadas en el JSON
@@ -393,12 +401,12 @@ export class InformeCostoHorarioService {
 
     // Ratios históricos vinculados al modelo
     const { map: ratiosModelo, raw: ratiosRaw } = await this.getRatiosPorModelo(
-      machine.modelo_id as number,
+      Number(machine.modelo_id),
     );
 
     // Componentes históricos vinculados al modelo
     const { componentesMap, raw: componentesRaw } =
-      await this.getComponentesPorModelo(machine.modelo_id as number);
+      await this.getComponentesPorModelo(Number(machine.modelo_id));
 
     const escenariosCalculo = escenarios.map((esc) => {
       const horasUsoAnual = esc.horasMinimas * (dto.mesesPorAnio || 12);
@@ -453,9 +461,9 @@ export class InformeCostoHorarioService {
         ratios.gets;
 
       const utilidadFija =
-        subtotalFijo * (machine.modelo?.porcentaje_utilidad || 0);
+        subtotalFijo * Number(machine.modelo?.porcentaje_utilidad || 0);
       const utilidadVariable =
-        subtotalVariable * (machine.modelo?.porcentaje_utilidad || 0);
+        subtotalVariable * Number(machine.modelo?.porcentaje_utilidad || 0);
 
       // Obtener datos de amortización para usar en la sección 3
       const amortizacionData = this.calcularAmortizacion(
@@ -484,7 +492,7 @@ export class InformeCostoHorarioService {
 
       // Utilidad sobre el subtotal de posesión
       const utilidadPosesion =
-        subtotalPosesion * (machine.modelo?.porcentaje_utilidad || 0);
+        subtotalPosesion * Number(machine.modelo?.porcentaje_utilidad || 0);
 
       // Cálculo total de PPTO PICs - solo la suma de los 7 componentes PICs (IDs 1-7)
       const totalPptoPics =
@@ -512,7 +520,8 @@ export class InformeCostoHorarioService {
 
       // Utilidad sobre subtotal variable
       const utilidadVariableCalculada =
-        subtotalVariableCalculado * (machine.modelo?.porcentaje_utilidad || 0);
+        subtotalVariableCalculado *
+        Number(machine.modelo?.porcentaje_utilidad || 0);
 
       return {
         horasMinimas: esc.horasMinimas,
@@ -635,44 +644,48 @@ export class InformeCostoHorarioService {
       version: '1.0.0',
       comentario: dto.comentario,
       machine: {
-        id: machine.id,
-        item: machine.id,
+        id: Number(machine.id),
+        item: Number(machine.id),
         equipo: machine.modelo?.equipo?.nombre || null,
         marca: machine.modelo?.marca?.nombre || null,
         modelo: machine.modelo?.nombre || null,
-        horometroInicial: machine.horometro_inicial,
+        horometroInicial: Number(machine.horometro_inicial || 0),
         estado: machine.estado,
-        idEquipo: machine.id_equipo_interno,
+        idEquipo: machine.id_equipo_interno
+          ? Number(machine.id_equipo_interno)
+          : null,
       },
       parametros: {
-        machineId: dto.machineId,
-        posesionId: dto.posesionId,
-        mesesPorAnio: dto.mesesPorAnio || 12,
-        tasaFinanciamiento: dto.tasaFinanciamiento || 0,
-        aniosFinanciamiento: dto.aniosFinanciamiento || 0,
-        tasaSeguro: dto.tasaSeguro || 0,
-        aniosSeguro: dto.aniosSeguro || 0,
+        machineId: Number(dto.machineId),
+        posesionId: Number(dto.posesionId),
+        mesesPorAnio: Number(dto.mesesPorAnio || 12),
+        tasaFinanciamiento: Number(dto.tasaFinanciamiento || 0),
+        aniosFinanciamiento: Number(dto.aniosFinanciamiento || 0),
+        tasaSeguro: Number(dto.tasaSeguro || 0),
+        aniosSeguro: Number(dto.aniosSeguro || 0),
         comentario: dto.comentario,
         usuarioId: dto.usuarioId,
-        incluyeGastosDistribuibles: dto.incluyeGastosDistribuibles || false,
-        costoMCorrMayores: dto.costoMCorrMayores,
-        porcentajeUtilidad: machine.modelo?.porcentaje_utilidad || 0,
+        incluyeGastosDistribuibles: Boolean(
+          dto.incluyeGastosDistribuibles || false,
+        ),
+        costoMCorrMayores: Number(dto.costoMCorrMayores || 0),
+        porcentajeUtilidad: Number(machine.modelo?.porcentaje_utilidad || 0),
         fechaCalculo: new Date().toISOString(),
       },
       ratiosMeta: ratiosRaw.map((r) => ({
-        id: r.id,
-        tipo: r.tipo_ratio.nombre,
-        categoria: r.tipo_ratio.categoria,
-        valor: r.valor,
+        id: Number(r.id),
+        tipo: r.tipo_ratio?.nombre,
+        categoria: r.tipo_ratio?.categoria,
+        valor: Number(r.valor || 0),
         fecha_efectiva: r.fecha_efectiva,
       })),
       componentesMeta: componentesRaw.map((c) => ({
-        id: c.id,
+        id: Number(c.id),
         componente: c.componente.nombre,
-        monto_usd: c.monto_usd,
-        pcr: c.pcr,
-        distribucion: c.distribucion,
-        monto_aplicado_al_proyecto: c.monto_aplicado_al_proyecto,
+        monto_usd: Number(c.monto_usd || 0),
+        pcr: Number(c.pcr || 0),
+        distribucion: Number(c.distribucion || 0),
+        monto_aplicado_al_proyecto: Number(c.monto_aplicado_al_proyecto || 0),
         fecha_efectiva: c.fecha_efectiva,
       })),
       escenarios: escenariosCalculo,
@@ -729,14 +742,26 @@ export class InformeCostoHorarioService {
         },
       });
 
-      return {
-        ...historialEntry,
+      return serializeBigInt({
+        id: Number(historialEntry.id),
+        machine_id: Number(historialEntry.machine_id),
+        usuario_id: historialEntry.usuario_id,
+        resultado_completo_json: historialEntry.resultado_completo_json,
+        escenarios_horas: historialEntry.escenarios_horas,
+        tasa_financiamiento_usada: Number(
+          historialEntry.tasa_financiamiento_usada || 0,
+        ),
+        anios_financiamiento: Number(historialEntry.anios_financiamiento || 0),
+        tasa_seguro_usada: Number(historialEntry.tasa_seguro_usada || 0),
+        anios_seguro: Number(historialEntry.anios_seguro || 0),
+        mes_por_anio: Number(historialEntry.mes_por_anio || 12),
+        fecha_calculo: historialEntry.fecha_calculo,
         machine_info: {
-          id: resultado.machine.id,
+          id: Number(resultado.machine.id),
           id_equipo_interno: resultado.machine.idEquipo,
           modelo: resultado.machine.modelo,
         },
-      };
+      });
     } catch (error: unknown) {
       console.error(
         'Error calculating and saving informe costo horario:',
@@ -756,7 +781,8 @@ export class InformeCostoHorarioService {
         orderBy: { fecha_calculo: 'desc' },
       });
 
-      return historial;
+      // Convertir automáticamente todos los BigInt a Number
+      return serializeBigIntArray(historial);
     } catch (error: unknown) {
       console.error(`Error finding historial for machine ${machineId}:`, error);
       throw error;
@@ -771,7 +797,7 @@ export class InformeCostoHorarioService {
       const historial = await this.prisma.informeCostoHorario.findUnique({
         where: { id },
         include: {
-          machine: {
+          machines: {
             include: {
               modelo: {
                 include: {
@@ -788,7 +814,8 @@ export class InformeCostoHorarioService {
         throw new NotFoundException(`Historial with ID ${id} not found`);
       }
 
-      return historial;
+      // Convertir automáticamente todos los BigInt a Number
+      return serializeBigInt(historial);
     } catch (error: unknown) {
       console.error(`Error finding historial ${id}:`, error);
       throw error;
@@ -847,7 +874,7 @@ export class InformeCostoHorarioService {
 
       // Ratios históricos vinculados al modelo
       const { map: ratiosModelo } = await this.getRatiosPorModelo(
-        machine.modelo_id as number,
+        Number(machine.modelo_id),
       );
       console.log(`[RESUMEN] Ratios obtenidos del modelo:`);
       Object.entries(ratiosModelo).forEach(([key, value]) => {
@@ -856,7 +883,7 @@ export class InformeCostoHorarioService {
 
       // Componentes históricos vinculados al modelo
       const { componentesMap } = await this.getComponentesPorModelo(
-        machine.modelo_id as number,
+        Number(machine.modelo_id),
       );
       console.log(`[RESUMEN] Componentes obtenidos del modelo:`);
       Object.entries(componentesMap).forEach(([key, value]) => {
@@ -1142,7 +1169,9 @@ export class InformeCostoHorarioService {
         );
 
         // Tarifa: Costo_Hr * (1 + porcentaje_utilidad)
-        const porcentajeUtilidad = machine.modelo?.porcentaje_utilidad || 0;
+        const porcentajeUtilidad = Number(
+          machine.modelo?.porcentaje_utilidad || 0,
+        );
         const Tarifa = Costo_Hr * (1 + porcentajeUtilidad);
         console.log(
           `[RESUMEN] Tarifa: ${Tarifa.toFixed(4)} = ${Costo_Hr.toFixed(4)} * (1 + ${porcentajeUtilidad})`,
@@ -1171,20 +1200,22 @@ export class InformeCostoHorarioService {
 
       return {
         machine: {
-          id: machine.id,
-          item: machine.id,
+          id: Number(machine.id),
+          item: Number(machine.id),
           equipo: machine.modelo?.equipo?.nombre || null,
           marca: machine.modelo?.marca?.nombre || null,
           modelo: machine.modelo?.nombre || null,
           estado: machine.estado,
-          idEquipo: machine.id_equipo_interno,
+          idEquipo: machine.id_equipo_interno
+            ? Number(machine.id_equipo_interno)
+            : null,
         },
         parametros: {
-          posesionId,
+          posesionId: Number(posesionId),
           tasaFinanciamiento: 0.09,
           aniosFinanciamiento: 3,
           tasaSeguro: 0.01,
-          porcentajeUtilidad: machine.modelo?.porcentaje_utilidad || 0,
+          porcentajeUtilidad: Number(machine.modelo?.porcentaje_utilidad || 0),
           fechaCalculo: new Date().toISOString(),
         },
         resumen: resumenEscenarios,
@@ -1211,7 +1242,7 @@ export class InformeCostoHorarioService {
     }
 
     // Extraer datos del historial
-    const machine = historial.machine;
+    const machine = historial.machines;
     const informeData = historial.resultado_completo_json as any;
 
     // Construir el resumen desde los datos del historial
@@ -1258,29 +1289,47 @@ export class InformeCostoHorarioService {
 
     return {
       machine: {
-        id: machine.id,
-        item: machine.id,
+        id: Number(machine.id),
+        item: Number(machine.id),
         equipo: machine.modelo?.equipo?.nombre || null,
         marca: machine.modelo?.marca?.nombre || null,
         modelo: machine.modelo?.nombre || null,
         estado: machine.estado,
-        idEquipo: machine.id_equipo_interno,
+        idEquipo: machine.id_equipo_interno
+          ? Number(machine.id_equipo_interno)
+          : null,
       },
       parametros: {
-        machineId: informeData.parametros?.machineId || historial.machine_id,
-        posesionId: informeData.parametros?.posesionId || historial.machine_id, // usando machine_id como referencia
-        mesesPorAnio: informeData.parametros?.mesesPorAnio || 12,
-        tasaFinanciamiento: informeData.parametros?.tasaFinanciamiento || 0,
-        aniosFinanciamiento: informeData.parametros?.aniosFinanciamiento || 0,
-        tasaSeguro: informeData.parametros?.tasaSeguro || 0,
-        aniosSeguro: informeData.parametros?.aniosSeguro || 0,
+        machineId: Number(
+          informeData.parametros?.machineId || historial.machine_id,
+        ),
+        posesionId: Number(
+          informeData.parametros?.posesionId || historial.machine_id,
+        ), // usando machine_id como referencia
+        mesesPorAnio: Number(informeData.parametros?.mesesPorAnio || 12),
+        tasaFinanciamiento: Number(
+          informeData.parametros?.tasaFinanciamiento || 0,
+        ),
+        aniosFinanciamiento: Number(
+          informeData.parametros?.aniosFinanciamiento || 0,
+        ),
+        tasaSeguro: Number(informeData.parametros?.tasaSeguro || 0),
+        aniosSeguro: Number(informeData.parametros?.aniosSeguro || 0),
         comentario: informeData.parametros?.comentario,
         usuarioId: informeData.parametros?.usuarioId,
-        incluyeGastosDistribuibles:
+        incluyeGastosDistribuibles: Boolean(
           informeData.parametros?.incluyeGastosDistribuibles || false,
-        costoMCorrMayores: informeData.parametros?.costoMCorrMayores,
-        porcentajeUtilidad: informeData.parametros?.porcentajeUtilidad || 0,
-        fechaCalculo: historial.fecha_calculo.toISOString(),
+        ),
+        costoMCorrMayores: Number(
+          informeData.parametros?.costoMCorrMayores || 0,
+        ),
+        porcentajeUtilidad: Number(
+          informeData.parametros?.porcentajeUtilidad || 0,
+        ),
+        fechaCalculo:
+          typeof historial.fecha_calculo === 'string'
+            ? historial.fecha_calculo
+            : historial.fecha_calculo.toISOString(),
       },
       resumen: resumen,
     };
@@ -1354,27 +1403,33 @@ export class InformeCostoHorarioService {
 
         return {
           machine: {
-            id: machine.id,
-            item: machine.id,
+            id: Number(machine.id),
+            item: Number(machine.id),
             equipo: machine.modelo?.equipo?.nombre || null,
             marca: machine.modelo?.marca?.nombre || null,
             modelo: machine.modelo?.nombre || null,
-            horometroInicial: machine.horometro_inicial,
+            horometroInicial: Number(machine.horometro_inicial || 0),
             estado: machine.estado,
-            idEquipo: machine.id_equipo_interno,
-            valorSimilarNuevo: machine.valor_similar_nuevo,
-            politicaDepreciacion: machine.politica_depreciacion,
-            vidaUtil: machine.vida_util,
+            idEquipo: machine.id_equipo_interno
+              ? Number(machine.id_equipo_interno)
+              : null,
+            valorSimilarNuevo: Number(machine.valor_similar_nuevo || 0),
+            politicaDepreciacion: Number(machine.politica_depreciacion || 0),
+            vidaUtil: Number(machine.vida_util || 0),
           },
           latestReport: latestReport
             ? {
-                id: latestReport.id,
+                id: Number(latestReport.id),
                 fechaCalculo: latestReport.fecha_calculo,
-                tasaFinanciamiento: latestReport.tasa_financiamiento_usada,
-                aniosFinanciamiento: latestReport.anios_financiamiento,
-                tasaSeguro: latestReport.tasa_seguro_usada,
-                aniosSeguro: latestReport.anios_seguro,
-                mesPorAnio: latestReport.mes_por_anio,
+                tasaFinanciamiento: Number(
+                  latestReport.tasa_financiamiento_usada || 0,
+                ),
+                aniosFinanciamiento: Number(
+                  latestReport.anios_financiamiento || 0,
+                ),
+                tasaSeguro: Number(latestReport.tasa_seguro_usada || 0),
+                aniosSeguro: Number(latestReport.anios_seguro || 0),
+                mesPorAnio: Number(latestReport.mes_por_anio || 12),
                 usuarioId: latestReport.usuario_id,
               }
             : null,
@@ -1383,7 +1438,7 @@ export class InformeCostoHorarioService {
         };
       });
 
-      return result;
+      return serializeBigIntArray(result);
     } catch (error: unknown) {
       console.error('Error getting all machines with latest reports:', error);
       throw error;
@@ -1440,7 +1495,7 @@ export class InformeCostoHorarioService {
         }),
       );
 
-      return resumenes;
+      return serializeBigIntArray(resumenes);
     } catch (error: unknown) {
       console.error('Error getting all machines resumen reports:', error);
       throw error;

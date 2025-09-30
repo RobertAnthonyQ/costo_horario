@@ -8,6 +8,10 @@ import { PrismaService } from '../../../core/prisma/prisma.service';
 import { CreateModeloDto } from './dto/create-modelo.dto';
 import { UpdateModeloDto } from './dto/update-modelo.dto';
 import { PrismaClientKnownRequestError } from '@prisma/client/runtime/library';
+import {
+  serializeBigInt,
+  serializeBigIntArray,
+} from '../../../utils/bigint-serializer';
 
 @Injectable()
 export class ModelosService {
@@ -70,8 +74,7 @@ export class ModelosService {
 
       this.logger.log(`Modelo creado con ID: ${modelo.id}`);
 
-      // **SIN CONVERSIÓN - DEVOLVER VALOR DIRECTO**
-      return modelo;
+      return serializeBigInt(modelo);
     } catch (error) {
       this.logger.error(`Error al crear modelo: ${error.message}`);
 
@@ -116,8 +119,7 @@ export class ModelosService {
       orderBy: [{ marca: { nombre: 'asc' } }, { nombre: 'asc' }],
     });
 
-    // **SIN CONVERSIÓN - DEVOLVER VALORES DIRECTOS**
-    return modelos;
+    return serializeBigIntArray(modelos);
   }
 
   async findOne(id: number) {
@@ -166,8 +168,7 @@ export class ModelosService {
       throw new NotFoundException(`Modelo con ID ${id} no encontrado`);
     }
 
-    // **SIN CONVERSIÓN - DEVOLVER VALOR DIRECTO**
-    return modelo;
+    return serializeBigInt(modelo);
   }
 
   async update(id: number, updateModeloDto: UpdateModeloDto) {
@@ -226,8 +227,7 @@ export class ModelosService {
 
       this.logger.log(`Modelo actualizado: ${modelo.nombre}`);
 
-      // **SIN CONVERSIÓN - DEVOLVER VALOR DIRECTO**
-      return modelo;
+      return serializeBigInt(modelo);
     } catch (error) {
       this.logger.error(`Error al actualizar modelo: ${error.message}`);
 
@@ -287,7 +287,7 @@ export class ModelosService {
       });
 
       this.logger.log(`Modelo eliminado: ${modelo.nombre}`);
-      return modelo;
+      return serializeBigInt(modelo);
     } catch (error) {
       this.logger.error(`Error al eliminar modelo: ${error.message}`);
       throw error;
@@ -369,8 +369,7 @@ export class ModelosService {
       },
     });
 
-    // **SIN CONVERSIÓN - DEVOLVER VALORES DIRECTOS**
-    return modelos;
+    return serializeBigIntArray(modelos);
   }
 
   async findByEquipo(equipoId: number) {
@@ -393,8 +392,7 @@ export class ModelosService {
       },
     });
 
-    // **SIN CONVERSIÓN - DEVOLVER VALORES DIRECTOS**
-    return modelos;
+    return serializeBigIntArray(modelos);
   }
 
   async findByFlota(flotaId: number) {
@@ -417,7 +415,6 @@ export class ModelosService {
       },
     });
 
-    // **SIN CONVERSIÓN - DEVOLVER VALORES DIRECTOS**
-    return modelos;
+    return serializeBigIntArray(modelos);
   }
 }

@@ -6,6 +6,10 @@ import {
 } from '@nestjs/common';
 import { PrismaService } from '../../../core/prisma/prisma.service';
 import { CreateCalculoPosesionDto } from './dto/create-calculo-posesion.dto';
+import {
+  serializeBigInt,
+  serializeBigIntArray,
+} from '../../../utils/bigint-serializer';
 // Tipos e interfaces locales definidas aquí
 
 // Tipo para los datos de entrada de cada escenario
@@ -232,14 +236,14 @@ export class PosesionService {
         `Posesion calculation saved successfully with ID: ${historialEntry.id} for machine: ${dto.machine_id}`,
       );
 
-      return {
+      return serializeBigInt({
         ...historialEntry,
         machine_info: {
           id: machine.id,
           id_equipo_interno: machine.id_equipo_interno,
           modelo: machine.modelo,
         },
-      };
+      });
     } catch (error: unknown) {
       this.logger.error('Error calculating and saving posesion:', error);
       // Log más detallado del error para debugging
@@ -277,14 +281,14 @@ export class PosesionService {
 
       const resultados = this.performCalculation(machine, dto);
 
-      return {
+      return serializeBigInt({
         machine_info: {
           id: machine.id,
           id_equipo_interno: machine.id_equipo_interno,
           modelo: machine.modelo,
         },
         resultados,
-      };
+      });
     } catch (error: unknown) {
       this.logger.error('Error calculating posesion preview:', error);
       throw error;
@@ -310,7 +314,7 @@ export class PosesionService {
       });
 
       // Procesar para agregar el número de escenarios sin enviar todo el JSON
-      return historial.map((item) => ({
+      const processedHistorial = historial.map((item) => ({
         id: item.id,
         machine_id: item.machine_id,
         fecha_calculo: item.fecha_calculo,
@@ -318,6 +322,8 @@ export class PosesionService {
         usuario_id: item.usuario_id,
         numero_escenarios: (item.horas_json as any)?.escenarios?.length || 0,
       }));
+
+      return serializeBigIntArray(processedHistorial);
     } catch (error: unknown) {
       this.logger.error(
         `Error finding historial summary for machine ${machineId}:`,
@@ -337,7 +343,7 @@ export class PosesionService {
         orderBy: { fecha_calculo: 'desc' },
       });
 
-      return historial;
+      return serializeBigIntArray(historial);
     } catch (error: unknown) {
       this.logger.error(
         `Error finding historial for machine ${machineId}:`,
@@ -355,7 +361,7 @@ export class PosesionService {
       const historial = await this.prisma.posesionHistorial.findUnique({
         where: { id },
         include: {
-          machine: {
+          machines: {
             include: {
               modelo: {
                 include: {
@@ -372,7 +378,7 @@ export class PosesionService {
         throw new NotFoundException(`Historial with ID ${id} not found`);
       }
 
-      return historial;
+      return serializeBigInt(historial);
     } catch (error: unknown) {
       this.logger.error(`Error finding historial ${id}:`, error);
       throw error;

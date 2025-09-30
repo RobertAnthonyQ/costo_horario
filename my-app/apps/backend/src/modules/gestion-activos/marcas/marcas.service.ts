@@ -3,6 +3,10 @@ import { PrismaService } from '../../../core/prisma/prisma.service';
 import { CreateMarcaDto } from './dto/create-marca.dto';
 import { UpdateMarcaDto } from './dto/update-marca.dto';
 import { PrismaClientKnownRequestError } from '@prisma/client/runtime/library';
+import {
+  serializeBigInt,
+  serializeBigIntArray,
+} from '../../../utils/bigint-serializer';
 
 @Injectable()
 export class MarcasService {
@@ -19,7 +23,7 @@ export class MarcasService {
       });
 
       this.logger.log(`Marca creada con ID: ${marca.id}`);
-      return marca;
+      return serializeBigInt(marca);
     } catch (error) {
       this.logger.error(`Error al crear marca: ${error.message}`);
 
@@ -35,7 +39,7 @@ export class MarcasService {
   async findAll() {
     this.logger.log('Obteniendo todas las marcas');
 
-    return this.prisma.marcas.findMany({
+    const marcas = await this.prisma.marcas.findMany({
       include: {
         modelos: {
           include: {
@@ -47,6 +51,8 @@ export class MarcasService {
         nombre: 'asc',
       },
     });
+
+    return serializeBigIntArray(marcas);
   }
 
   async findOne(id: number) {
@@ -69,7 +75,7 @@ export class MarcasService {
       throw new NotFoundException(`Marca con ID ${id} no encontrada`);
     }
 
-    return marca;
+    return serializeBigInt(marca);
   }
 
   async update(id: number, updateMarcaDto: UpdateMarcaDto) {
@@ -88,7 +94,7 @@ export class MarcasService {
       });
 
       this.logger.log(`Marca actualizada: ${marca.nombre}`);
-      return marca;
+      return serializeBigInt(marca);
     } catch (error) {
       this.logger.error(`Error al actualizar marca: ${error.message}`);
 
@@ -124,7 +130,7 @@ export class MarcasService {
       });
 
       this.logger.log(`Marca eliminada: ${marca.nombre}`);
-      return marca;
+      return serializeBigInt(marca);
     } catch (error) {
       this.logger.error(`Error al eliminar marca: ${error.message}`);
       throw error;

@@ -3,6 +3,10 @@ import { PrismaService } from '../../../core/prisma/prisma.service';
 import { CreateEquipoDto } from './dto/create-equipo.dto';
 import { UpdateEquipoDto } from './dto/update-equipo.dto';
 import { PrismaClientKnownRequestError } from '@prisma/client/runtime/library';
+import {
+  serializeBigInt,
+  serializeBigIntArray,
+} from '../../../utils/bigint-serializer';
 
 @Injectable()
 export class EquipoService {
@@ -19,7 +23,7 @@ export class EquipoService {
       });
 
       this.logger.log(`Equipo creado con ID: ${equipo.id}`);
-      return equipo;
+      return serializeBigInt(equipo);
     } catch (error) {
       this.logger.error(`Error al crear equipo: ${error.message}`);
 
@@ -35,7 +39,7 @@ export class EquipoService {
   async findAll() {
     this.logger.log('Obteniendo todos los equipos');
 
-    return this.prisma.equipo.findMany({
+    const equipos = await this.prisma.equipo.findMany({
       include: {
         modelos: {
           include: {
@@ -48,6 +52,8 @@ export class EquipoService {
         nombre: 'asc',
       },
     });
+
+    return serializeBigIntArray(equipos);
   }
 
   async findOne(id: number) {
@@ -70,7 +76,7 @@ export class EquipoService {
       throw new NotFoundException(`Equipo con ID ${id} no encontrado`);
     }
 
-    return equipo;
+    return serializeBigInt(equipo);
   }
 
   async update(id: number, updateEquipoDto: UpdateEquipoDto) {
@@ -89,7 +95,7 @@ export class EquipoService {
       });
 
       this.logger.log(`Equipo actualizado: ${equipo.nombre}`);
-      return equipo;
+      return serializeBigInt(equipo);
     } catch (error) {
       this.logger.error(`Error al actualizar equipo: ${error.message}`);
 
@@ -125,7 +131,7 @@ export class EquipoService {
       });
 
       this.logger.log(`Equipo eliminado: ${equipo.nombre}`);
-      return equipo;
+      return serializeBigInt(equipo);
     } catch (error) {
       this.logger.error(`Error al eliminar equipo: ${error.message}`);
       throw error;

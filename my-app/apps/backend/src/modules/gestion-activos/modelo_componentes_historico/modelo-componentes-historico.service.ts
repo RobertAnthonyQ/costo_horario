@@ -8,6 +8,10 @@ import { PrismaService } from '../../../core/prisma/prisma.service';
 import { CreateModeloComponentesHistoricoDto } from './dto/create-modelo-componentes-historico.dto';
 import { UpdateModeloComponentesHistoricoDto } from './dto/update-modelo-componentes-historico.dto';
 import { Decimal } from '@prisma/client/runtime/library';
+import {
+  serializeBigInt,
+  serializeBigIntArray,
+} from '../../../utils/bigint-serializer';
 
 @Injectable()
 export class ModeloComponentesHistoricoService {
@@ -117,7 +121,8 @@ export class ModeloComponentesHistoricoService {
 
         // Verificar que la máquina pertenece al modelo especificado
         if (
-          machine.modelo_id !== createModeloComponentesHistoricoDto.modelo_id
+          machine.modelo_id !==
+          BigInt(createModeloComponentesHistoricoDto.modelo_id)
         ) {
           this.logger.error(
             `La máquina ID ${createModeloComponentesHistoricoDto.machine_id} pertenece al modelo ID ${machine.modelo_id}, no al modelo ID ${createModeloComponentesHistoricoDto.modelo_id}`,
@@ -229,7 +234,7 @@ export class ModeloComponentesHistoricoService {
       this.logger.log('Registro creado exitosamente con ID:', registro.id);
       const resultado = this.addCalculatedFields(registro);
       this.logger.log('Resultado final:', JSON.stringify(resultado, null, 2));
-      return resultado;
+      return serializeBigInt(resultado);
     } catch (error) {
       this.logger.error('Error en create:', error);
 
@@ -263,7 +268,7 @@ export class ModeloComponentesHistoricoService {
       },
     });
 
-    return this.addCalculatedFieldsToArray(registros);
+    return serializeBigIntArray(this.addCalculatedFieldsToArray(registros));
   }
 
   async findOne(id: number) {
@@ -294,7 +299,7 @@ export class ModeloComponentesHistoricoService {
       );
     }
 
-    return this.addCalculatedFields(registro);
+    return serializeBigInt(this.addCalculatedFields(registro));
   }
 
   async update(
@@ -359,7 +364,7 @@ export class ModeloComponentesHistoricoService {
         },
       });
 
-      return this.addCalculatedFields(registro);
+      return serializeBigInt(this.addCalculatedFields(registro));
     } catch (error) {
       if (
         error instanceof NotFoundException ||
@@ -385,9 +390,11 @@ export class ModeloComponentesHistoricoService {
       );
     }
 
-    return this.prisma.modeloComponentesHistorico.delete({
+    const registro = await this.prisma.modeloComponentesHistorico.delete({
       where: { id },
     });
+
+    return serializeBigInt(registro);
   }
 
   async findByModelo(modeloId: number) {
@@ -408,7 +415,7 @@ export class ModeloComponentesHistoricoService {
       },
     });
 
-    return this.addCalculatedFieldsToArray(registros);
+    return serializeBigIntArray(this.addCalculatedFieldsToArray(registros));
   }
 
   async findByComponente(componenteId: number) {
@@ -429,7 +436,7 @@ export class ModeloComponentesHistoricoService {
       },
     });
 
-    return this.addCalculatedFieldsToArray(registros);
+    return serializeBigIntArray(this.addCalculatedFieldsToArray(registros));
   }
 
   async findByFechaRange(fechaDesde: string, fechaHasta: string) {
@@ -455,7 +462,7 @@ export class ModeloComponentesHistoricoService {
       },
     });
 
-    return this.addCalculatedFieldsToArray(registros);
+    return serializeBigIntArray(this.addCalculatedFieldsToArray(registros));
   }
 
   async getLatestByModelo(modeloId: number) {
@@ -479,13 +486,15 @@ export class ModeloComponentesHistoricoService {
     // Mantener solo el más reciente por componente_id
     const latestByComponenteId = new Map<number, (typeof registros)[number]>();
     for (const registro of registros) {
-      if (!latestByComponenteId.has(registro.componente_id)) {
-        latestByComponenteId.set(registro.componente_id, registro);
+      if (!latestByComponenteId.has(Number(registro.componente_id))) {
+        latestByComponenteId.set(Number(registro.componente_id), registro);
       }
     }
 
     const latestRegistros = Array.from(latestByComponenteId.values());
-    return this.addCalculatedFieldsToArray(latestRegistros);
+    return serializeBigIntArray(
+      this.addCalculatedFieldsToArray(latestRegistros),
+    );
   }
 
   async getStatistics() {

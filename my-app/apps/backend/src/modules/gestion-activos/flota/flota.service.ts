@@ -3,6 +3,10 @@ import { PrismaService } from '../../../core/prisma/prisma.service';
 import { CreateFlotaDto } from './dto/create-flota.dto';
 import { UpdateFlotaDto } from './dto/update-flota.dto';
 import { PrismaClientKnownRequestError } from '@prisma/client/runtime/library';
+import {
+  serializeBigInt,
+  serializeBigIntArray,
+} from '../../../utils/bigint-serializer';
 
 @Injectable()
 export class FlotaService {
@@ -19,7 +23,7 @@ export class FlotaService {
       });
 
       this.logger.log(`Flota creada con ID: ${flota.id}`);
-      return flota;
+      return serializeBigInt(flota);
     } catch (error) {
       this.logger.error(`Error al crear flota: ${error.message}`);
 
@@ -35,7 +39,7 @@ export class FlotaService {
   async findAll() {
     this.logger.log('Obteniendo todas las flotas');
 
-    return this.prisma.flota.findMany({
+    const flotas = await this.prisma.flota.findMany({
       include: {
         modelos: {
           include: {
@@ -49,6 +53,8 @@ export class FlotaService {
         nombre: 'asc',
       },
     });
+
+    return serializeBigIntArray(flotas);
   }
 
   async findOne(id: number) {
@@ -71,7 +77,7 @@ export class FlotaService {
       throw new NotFoundException(`Flota con ID ${id} no encontrada`);
     }
 
-    return flota;
+    return serializeBigInt(flota);
   }
 
   async update(id: number, updateFlotaDto: UpdateFlotaDto) {
@@ -90,7 +96,7 @@ export class FlotaService {
       });
 
       this.logger.log(`Flota actualizada: ${flota.nombre}`);
-      return flota;
+      return serializeBigInt(flota);
     } catch (error) {
       this.logger.error(`Error al actualizar flota: ${error.message}`);
 
@@ -126,7 +132,7 @@ export class FlotaService {
       });
 
       this.logger.log(`Flota eliminada: ${flota.nombre}`);
-      return flota;
+      return serializeBigInt(flota);
     } catch (error) {
       this.logger.error(`Error al eliminar flota: ${error.message}`);
       throw error;
