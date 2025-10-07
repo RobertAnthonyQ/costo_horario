@@ -1,5 +1,17 @@
 // Machine related types and interfaces
 
+// Interfaz para datos adicionales de la máquina
+export interface DatosAdicionalesMaquina {
+  procedencia_pais?: string;
+  potencia_nominal_hp?: string;
+  consumo_combustible_lh?: number;
+  equipos_comercializados_peru?: number;
+  plazo_entrega_dias?: number;
+  capacitacion_horas?: number;
+  tiempo_atencion_repuestos_dias?: string;
+  ofrece_financiamiento?: boolean;
+}
+
 // Tipos base de relaciones
 export interface Marca {
   id: number;
@@ -46,7 +58,7 @@ export interface Machine {
   valor_similar_nuevo?: number;
   valor_venta?: number;
   vida_util?: number;
-  otros_json?: Record<string, any> | null;
+  otros_json?: DatosAdicionalesMaquina | null;
   created_at?: string;
   modelo?: Modelo;
 }
@@ -62,7 +74,7 @@ export interface CreateMachineDto {
   valor_similar_nuevo?: number;
   valor_venta?: number;
   vida_util?: number;
-  otros_json?: Record<string, any> | null;
+  otros_json?: DatosAdicionalesMaquina | null;
   // Datos adicionales para crear el modelo automáticamente
   modelo_data?: {
     nombre: string;

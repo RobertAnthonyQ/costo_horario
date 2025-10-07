@@ -77,4 +77,13 @@ export class CreateAnalisisFlujoDto {
   @IsString()
   @IsOptional()
   comentario?: string;
+
+  @ApiProperty({
+    example: 'user-uuid-123',
+    description: 'ID del usuario que realiza el análisis',
+    required: false,
+  })
+  @IsString()
+  @IsOptional()
+  usuarioId?: string;
 }

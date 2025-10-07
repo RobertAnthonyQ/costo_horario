@@ -7,6 +7,7 @@ import {
   ParseIntPipe,
   HttpCode,
   HttpStatus,
+  Query,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
 import { FlujoCajaService } from './flujo-caja.service';
@@ -99,14 +100,17 @@ export class FlujoCajaController {
   @ApiOperation({
     summary: 'Obtiene versiones (solo nombres y fechas)',
     description:
-      'Lista solo los nombres y fechas de los análisis para selección rápida',
+      'Lista solo los nombres y fechas de los análisis para selección rápida. Si se proporciona machineId, filtra por máquina específica.',
   })
   @ApiResponse({
     status: 200,
     description: 'Versiones obtenidas exitosamente',
   })
-  async getVersiones(): Promise<any[]> {
-    return this.flujoCajaService.findVersiones();
+  async getVersiones(
+    @Query('machineId', new ParseIntPipe({ optional: true }))
+    machineId?: number,
+  ): Promise<any[]> {
+    return this.flujoCajaService.findVersiones(machineId);
   }
 
   @Get(':id')

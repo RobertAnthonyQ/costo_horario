@@ -10,8 +10,10 @@ import {
   PossessionCalculation,
   RatiosCalculation,
   HourlyCostReport,
+  CashFlowAnalysis,
   PICsCalculation,
   Reports,
+  ConclusionsPage,
   NotFound,
 } from "./pages";
 import { ConfigurationPage } from "./pages/configuration";
@@ -37,7 +39,9 @@ const App = () => (
             <Route path="/ratios" element={<RatiosCalculation />} />
             <Route path="/ratios/compare" element={<RatiosCalculation />} />
             <Route path="/hourly-cost" element={<HourlyCostReport />} />
+            <Route path="/cash-flow" element={<CashFlowAnalysis />} />
             <Route path="/pics" element={<PICsCalculation />} />
+            <Route path="/conclusions" element={<ConclusionsPage />} />
             <Route
               path="/calculation-history"
               element={

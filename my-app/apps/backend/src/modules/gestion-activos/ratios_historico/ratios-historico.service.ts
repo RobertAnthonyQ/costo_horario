@@ -306,11 +306,10 @@ export class RatiosHistoricoService {
         dataToCreate.lugar_operacion = createRatiosHistoricoDto.lugar_operacion;
       }
 
-      // Solo incluir ratios_version si hay una versión válida
+      // Solo incluir ratios_version si hay una versión válida.
+      // Si no hay, omitimos la propiedad para que persista como NULL en DB.
       if (ratiosVersion) {
         dataToCreate.ratios_version = ratiosVersion as any;
-      } else {
-        dataToCreate.ratios_version = Prisma.JsonNull;
       }
 
       console.log('📝 DATOS FINALES PARA PRISMA:');
@@ -771,9 +770,6 @@ export class RatiosHistoricoService {
     this.logger.log('Obteniendo todas las versiones JSON de ratios');
 
     const whereCondition: any = {
-      ratios_version: {
-        not: Prisma.JsonNull,
-      },
       tipo_ratio_id: 100, // Solo historiales completos
     };
 
@@ -842,9 +838,6 @@ export class RatiosHistoricoService {
 
     const whereCondition: any = {
       tipo_ratio_id: 100, // Solo historiales completos
-      ratios_version: {
-        not: Prisma.JsonNull,
-      },
     };
 
     if (lugar) {
@@ -917,9 +910,6 @@ export class RatiosHistoricoService {
     const ratiosConVersiones = await this.prisma.ratiosHistorico.findMany({
       where: {
         modelo_id: modeloId,
-        ratios_version: {
-          not: Prisma.JsonNull,
-        },
         tipo_ratio_id: 100, // Solo historiales completos
       },
       select: {
@@ -984,9 +974,7 @@ export class RatiosHistoricoService {
     // Contar registros con versiones JSON
     const totalConVersiones = await this.prisma.ratiosHistorico.count({
       where: {
-        ratios_version: {
-          not: Prisma.JsonNull,
-        },
+        tipo_ratio_id: 100, // Solo historiales completos que tienen ratios_version
       },
     });
 

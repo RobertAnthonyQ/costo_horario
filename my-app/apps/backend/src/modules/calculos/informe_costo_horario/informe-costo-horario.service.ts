@@ -366,330 +366,450 @@ export class InformeCostoHorarioService {
    * Obtiene los escenarios desde un registro de posesión
    */
   private async getEscenariosFromPosesion(posesionId: number) {
-    const posesionData =
-      await this.posesionService.findHistorialById(posesionId);
-
-    if (!posesionData || !posesionData.horas_json?.escenarios) {
-      throw new NotFoundException(
-        `No se encontraron escenarios en el registro de posesión con ID ${posesionId}`,
+    try {
+      console.log(
+        `[DEBUG] Obteniendo escenarios de posesión ID: ${posesionId}`,
       );
-    }
 
-    // Mapear los escenarios de posesión al formato esperado
-    return posesionData.horas_json.escenarios.map((escenario) => ({
-      horasMinimas: escenario.horasMinimas,
-      gradoOperatividad: escenario.gradoDeOperatividad,
-      factorMercado: escenario.factorDeMercado,
-    }));
+      const posesionData =
+        await this.posesionService.findHistorialById(posesionId);
+
+      console.log(
+        `[DEBUG] Datos de posesión obtenidos:`,
+        posesionData ? 'OK' : 'NULL',
+      );
+      console.log(`[DEBUG] Estructura horas_json:`, posesionData?.horas_json);
+      console.log(
+        `[DEBUG] Escenarios disponibles:`,
+        posesionData?.horas_json?.escenarios,
+      );
+
+      if (!posesionData) {
+        throw new NotFoundException(
+          `No se encontró el registro de posesión con ID ${posesionId}`,
+        );
+      }
+
+      if (!posesionData.horas_json) {
+        throw new NotFoundException(
+          `El registro de posesión con ID ${posesionId} no tiene datos de horas_json`,
+        );
+      }
+
+      if (!posesionData.horas_json.escenarios) {
+        throw new NotFoundException(
+          `No se encontraron escenarios en el registro de posesión con ID ${posesionId}. Estructura horas_json: ${JSON.stringify(posesionData.horas_json)}`,
+        );
+      }
+
+      // Mapear los escenarios de posesión al formato esperado
+      const escenariosMapeados = posesionData.horas_json.escenarios.map(
+        (escenario) => ({
+          horasMinimas: escenario.horasMinimas,
+          gradoOperatividad: escenario.gradoDeOperatividad,
+          factorMercado: escenario.factorDeMercado,
+        }),
+      );
+
+      console.log(`[DEBUG] Escenarios mapeados:`, escenariosMapeados);
+      return escenariosMapeados;
+    } catch (error) {
+      console.error(
+        `[ERROR] Error obteniendo escenarios de posesión ${posesionId}:`,
+        error,
+      );
+      throw error;
+    }
   }
 
   async preview(dto: CreateInformeCostoHorarioDto) {
-    const machine = await this.prisma.machines.findUnique({
-      where: { id: dto.machineId },
-      include: { modelo: { include: { marca: true, equipo: true } } },
-    });
-    if (!machine) throw new NotFoundException('Machine not found');
+    try {
+      console.log(`[DEBUG] ===== INICIANDO PREVIEW =====`);
+      console.log(`[DEBUG] DTO recibido:`, dto);
 
-    // Obtener escenarios desde posesión
-    const escenarios = await this.getEscenariosFromPosesion(dto.posesionId);
+      const machine = await this.prisma.machines.findUnique({
+        where: { id: dto.machineId },
+        include: { modelo: { include: { marca: true, equipo: true } } },
+      });
 
-    const valorSimilarNuevo = Number(machine.valor_similar_nuevo);
-    const valorResidual10 = valorSimilarNuevo * 0.1;
-    const vidaUtilFabricante =
-      machine.vida_util || machine.modelo?.vida_util_fabricante || 0;
-    const depreciacionTeorica = valorSimilarNuevo - valorResidual10; // simple
+      if (!machine) {
+        throw new NotFoundException(
+          `Máquina con ID ${dto.machineId} no encontrada`,
+        );
+      }
 
-    // Ratios históricos vinculados al modelo
-    const { map: ratiosModelo, raw: ratiosRaw } = await this.getRatiosPorModelo(
-      Number(machine.modelo_id),
-    );
-
-    // Componentes históricos vinculados al modelo
-    const { componentesMap, raw: componentesRaw } =
-      await this.getComponentesPorModelo(Number(machine.modelo_id));
-
-    const escenariosCalculo = escenarios.map((esc) => {
-      const horasUsoAnual = esc.horasMinimas * (dto.mesesPorAnio || 12);
-      // Valor comercial teórico (simplificado): residual * grado
-      const valorComercialTeorico = valorResidual10 * esc.gradoOperatividad; // placeholder
-      const valorComercialReal = valorComercialTeorico * esc.factorMercado; // placeholder
-      const porcentajeValorComercialReal =
-        valorComercialReal / valorSimilarNuevo;
-      const depreciacionReal = valorSimilarNuevo - valorComercialReal; // placeholder
-      const depreciacionHoraria = this.simpleDepreciacionHoraria(
-        depreciacionReal,
-        horasUsoAnual,
-      );
-      const financiamientoHoraria = this.simpleFinanciamientoHoraria(
-        valorSimilarNuevo,
-        dto.tasaFinanciamiento || 0,
-        horasUsoAnual,
-        dto.mesesPorAnio || 12,
-        dto.aniosFinanciamiento || 1,
-      );
-      const seguroHoraria = this.simpleSeguroHoraria(
-        valorSimilarNuevo,
-        dto.tasaSeguro || 0,
-        horasUsoAnual,
-      );
-      const subtotalFijo =
-        depreciacionHoraria + financiamientoHoraria + seguroHoraria;
-
-      // Ratios variables (USD/HR) obtenidos desde BD (asumimos ya están en USD/hora)
-      const ratios = {
-        lubricantes: ratiosModelo.lubricantes,
-        filtros: ratiosModelo.filtros,
-        materialesFerreteria: ratiosModelo.materialesFerreteria,
-        materialesElectricos: ratiosModelo.materialesElectricos,
-        mangueras: ratiosModelo.mangueras,
-        menores: ratiosModelo.menores,
-        mayores: dto.costoMCorrMayores || 0, // Usar input del DTO en lugar de BD
-        neumaticos: ratiosModelo.neumaticos,
-        soldaduraEstructuras: ratiosModelo.estructural, // lo incluimos como "estructural"
-        gets: ratiosModelo.desgaste,
-      };
-      const subtotalVariable =
-        ratios.lubricantes +
-        ratios.filtros +
-        ratios.materialesFerreteria +
-        ratios.materialesElectricos +
-        ratios.mangueras +
-        ratios.menores +
-        ratios.mayores +
-        ratios.neumaticos +
-        ratios.soldaduraEstructuras +
-        ratios.gets;
-
-      const utilidadFija =
-        subtotalFijo * Number(machine.modelo?.porcentaje_utilidad || 0);
-      const utilidadVariable =
-        subtotalVariable * Number(machine.modelo?.porcentaje_utilidad || 0);
-
-      // Obtener datos de amortización para usar en la sección 3
-      const amortizacionData = this.calcularAmortizacion(
-        valorSimilarNuevo,
-        dto.tasaFinanciamiento || 0,
-        dto.mesesPorAnio || 12,
-        dto.aniosFinanciamiento || 1,
+      console.log(
+        `[DEBUG] Máquina encontrada:`,
+        machine.id,
+        machine.modelo?.nombre,
       );
 
-      // Calcular costos horarios para la sección 3 (posesión)
-      const depreciacionHorariaPosesion = depreciacionReal / vidaUtilFabricante;
-      const financiamientoHorariaPosesion =
-        amortizacionData.totalInteres /
-        ((dto.mesesPorAnio || 12) *
-          (dto.aniosFinanciamiento || 1) *
-          esc.horasMinimas);
-      const seguroHorariaPosesion =
-        (valorSimilarNuevo * (dto.tasaSeguro || 0)) /
-        ((dto.mesesPorAnio || 12) * esc.horasMinimas);
-
-      // Subtotal de posesión (suma de los tres componentes)
-      const subtotalPosesion =
-        depreciacionHorariaPosesion +
-        financiamientoHorariaPosesion +
-        seguroHorariaPosesion;
-
-      // Utilidad sobre el subtotal de posesión
-      const utilidadPosesion =
-        subtotalPosesion * Number(machine.modelo?.porcentaje_utilidad || 0);
-
-      // Cálculo total de PPTO PICs - solo la suma de los 7 componentes PICs (IDs 1-7)
-      const totalPptoPics =
-        (componentesMap.motor * ratios.mayores * horasUsoAnual) /
-          vidaUtilFabricante +
-        (componentesMap.transmision * ratios.mayores * horasUsoAnual) /
-          vidaUtilFabricante +
-        (componentesMap.convertidor * ratios.mayores * horasUsoAnual) /
-          vidaUtilFabricante +
-        (componentesMap.mandosFinales * ratios.mayores * horasUsoAnual) /
-          vidaUtilFabricante +
-        (componentesMap.diferenciales * ratios.mayores * horasUsoAnual) /
-          vidaUtilFabricante +
-        (componentesMap.sistemaHidraulico * ratios.mayores * horasUsoAnual) /
-          vidaUtilFabricante +
-        (componentesMap.sistemaElectrico * ratios.mayores * horasUsoAnual) /
-          vidaUtilFabricante;
-
-      // Calcular subtotal variable usando la función
-      const subtotalVariableCalculado = this.calcularSubtotalVariable(
-        ratios,
-        totalPptoPics,
-        horasUsoAnual,
+      // Obtener escenarios desde posesión
+      const escenarios = await this.getEscenariosFromPosesion(dto.posesionId);
+      console.log(
+        `[DEBUG] Escenarios obtenidos: ${escenarios.length} escenarios`,
       );
 
-      // Utilidad sobre subtotal variable
-      const utilidadVariableCalculada =
-        subtotalVariableCalculado *
-        Number(machine.modelo?.porcentaje_utilidad || 0);
+      const valorSimilarNuevo = Number(machine.valor_similar_nuevo);
+      const valorResidual10 = valorSimilarNuevo * 0.1;
+      const vidaUtilFabricante =
+        machine.vida_util || machine.modelo?.vida_util_fabricante || 0;
+      const depreciacionTeorica = valorSimilarNuevo - valorResidual10; // simple
 
-      return {
-        horasMinimas: esc.horasMinimas,
-        gradoOperatividad: esc.gradoOperatividad,
-        factorMercado: esc.factorMercado,
-        horasUsoAnual,
-        seccion1: {
-          descripcion: {
-            item: machine.id,
-            equipo: machine.modelo?.equipo?.nombre || null,
-            marca: machine.modelo?.marca?.nombre || null,
-            modelo: machine.modelo?.nombre || null,
-            horometroInicial: machine.horometro_inicial,
-            estado: machine.estado,
-            idEquipo: machine.id_equipo_interno,
+      // Ratios históricos vinculados al modelo
+      const { map: ratiosModelo, raw: ratiosRaw } =
+        await this.getRatiosPorModelo(Number(machine.modelo_id));
+
+      // Componentes históricos vinculados al modelo
+      const { componentesMap, raw: componentesRaw } =
+        await this.getComponentesPorModelo(Number(machine.modelo_id));
+
+      const escenariosCalculo = escenarios.map((esc) => {
+        const horasUsoAnual = esc.horasMinimas * (dto.mesesPorAnio || 12);
+        // Valor comercial teórico (simplificado): residual * grado
+        const valorComercialTeorico = valorResidual10 * esc.gradoOperatividad; // placeholder
+        const valorComercialReal = valorComercialTeorico * esc.factorMercado; // placeholder
+        const porcentajeValorComercialReal =
+          valorComercialReal / valorSimilarNuevo;
+        const depreciacionReal = valorSimilarNuevo - valorComercialReal; // placeholder
+        const depreciacionHoraria = this.simpleDepreciacionHoraria(
+          depreciacionReal,
+          horasUsoAnual,
+        );
+        const financiamientoHoraria = this.simpleFinanciamientoHoraria(
+          valorSimilarNuevo,
+          dto.tasaFinanciamiento || 0,
+          horasUsoAnual,
+          dto.mesesPorAnio || 12,
+          dto.aniosFinanciamiento || 1,
+        );
+        const seguroHoraria = this.simpleSeguroHoraria(
+          valorSimilarNuevo,
+          dto.tasaSeguro || 0,
+          horasUsoAnual,
+        );
+        const subtotalFijo =
+          depreciacionHoraria + financiamientoHoraria + seguroHoraria;
+
+        // Ratios variables (USD/HR) obtenidos desde BD (asumimos ya están en USD/hora)
+        const ratios = {
+          lubricantes: ratiosModelo.lubricantes,
+          filtros: ratiosModelo.filtros,
+          materialesFerreteria: ratiosModelo.materialesFerreteria,
+          materialesElectricos: ratiosModelo.materialesElectricos,
+          mangueras: ratiosModelo.mangueras,
+          menores: ratiosModelo.menores,
+          mayores: dto.costoMCorrMayores || 0, // Usar input del DTO en lugar de BD
+          neumaticos: ratiosModelo.neumaticos,
+          soldaduraEstructuras: ratiosModelo.estructural, // lo incluimos como "estructural"
+          gets: ratiosModelo.desgaste,
+        };
+
+        console.log(`[DEBUG] ===== RATIOS DEBUG =====`);
+        console.log(`[DEBUG] dto.costoMCorrMayores:`, dto.costoMCorrMayores);
+        console.log(`[DEBUG] ratios.mayores:`, ratios.mayores);
+        console.log(`[DEBUG] ===========================`);
+
+        // PRIMERO: Calcular PPTO PICs para obtener el valor correcto de mayores
+        // Cálculo total de PPTO PICs - solo la suma de los 7 componentes PICs (IDs 1-7)
+        const totalPptoPics =
+          (componentesMap.motor * ratios.mayores * horasUsoAnual) /
+            vidaUtilFabricante +
+          (componentesMap.transmision * ratios.mayores * horasUsoAnual) /
+            vidaUtilFabricante +
+          (componentesMap.convertidor * ratios.mayores * horasUsoAnual) /
+            vidaUtilFabricante +
+          (componentesMap.mandosFinales * ratios.mayores * horasUsoAnual) /
+            vidaUtilFabricante +
+          (componentesMap.diferenciales * ratios.mayores * horasUsoAnual) /
+            vidaUtilFabricante +
+          (componentesMap.sistemaHidraulico * ratios.mayores * horasUsoAnual) /
+            vidaUtilFabricante +
+          (componentesMap.sistemaElectrico * ratios.mayores * horasUsoAnual) /
+            vidaUtilFabricante;
+
+        // Calcular el valor de mayores para usar en mantenimiento correctivo
+        const mayoresParaMantenimiento = totalPptoPics / horasUsoAnual;
+
+        console.log(`[DEBUG] ===== PPTO PICS DEBUG =====`);
+        console.log(`[DEBUG] totalPptoPics:`, totalPptoPics);
+        console.log(`[DEBUG] horasUsoAnual:`, horasUsoAnual);
+        console.log(
+          `[DEBUG] mayoresParaMantenimiento (totalPptoPics/horasUsoAnual):`,
+          mayoresParaMantenimiento,
+        );
+        console.log(`[DEBUG] ===============================`);
+
+        // SEGUNDO: Calcular los totales de cada categoría
+        const mantenimientoPreventivo =
+          ratios.lubricantes + ratios.filtros + ratios.materialesFerreteria;
+        const mantenimientoCorrectivo =
+          ratios.materialesElectricos +
+          ratios.mangueras +
+          ratios.menores +
+          mayoresParaMantenimiento +
+          ratios.soldaduraEstructuras;
+        const neumaticos = ratios.neumaticos;
+        const gets = ratios.gets;
+
+        // TERCERO: Calcular mano de obra técnico como la suma de las categorías por el factor
+        const indiceManoObra = dto.mano_de_obra_tecnico || 0;
+        const sumaParaManoObra =
+          mantenimientoPreventivo + mantenimientoCorrectivo + neumaticos + gets;
+        const manoObraCalculada = indiceManoObra * sumaParaManoObra;
+
+        console.log(`[DEBUG] ===== MANO DE OBRA TÉCNICO DEBUG =====`);
+        console.log(
+          `[DEBUG] Mantenimiento Preventivo: ${mantenimientoPreventivo}`,
+        );
+        console.log(
+          `[DEBUG] Mantenimiento Correctivo: ${mantenimientoCorrectivo}`,
+        );
+        console.log(`[DEBUG] Neumáticos: ${neumaticos}`);
+        console.log(`[DEBUG] Gets: ${gets}`);
+        console.log(
+          `[DEBUG] Suma para M.O. (${mantenimientoPreventivo} + ${mantenimientoCorrectivo} + ${neumaticos} + ${gets}): ${sumaParaManoObra}`,
+        );
+        console.log(`[DEBUG] Factor M.O.: ${indiceManoObra}`);
+        console.log(`[DEBUG] Mano de Obra Calculada: ${manoObraCalculada}`);
+        console.log(`[DEBUG] ========================================`);
+
+        // Ya no necesitamos cálculo temporal porque todo se calcula correctamente desde el inicio
+
+        const utilidadFija =
+          subtotalFijo * Number(machine.modelo?.porcentaje_utilidad || 0);
+
+        // Obtener datos de amortización para usar en la sección 3
+        const amortizacionData = this.calcularAmortizacion(
+          valorSimilarNuevo,
+          dto.tasaFinanciamiento || 0,
+          dto.mesesPorAnio || 12,
+          dto.aniosFinanciamiento || 1,
+        );
+
+        // Calcular costos horarios para la sección 3 (posesión)
+        const depreciacionHorariaPosesion =
+          depreciacionReal / vidaUtilFabricante;
+        const financiamientoHorariaPosesion =
+          amortizacionData.totalInteres /
+          ((dto.mesesPorAnio || 12) *
+            (dto.aniosFinanciamiento || 1) *
+            esc.horasMinimas);
+        const seguroHorariaPosesion =
+          (valorSimilarNuevo * (dto.tasaSeguro || 0)) /
+          ((dto.mesesPorAnio || 12) * esc.horasMinimas);
+
+        // Subtotal de posesión (suma de los tres componentes)
+        const subtotalPosesion =
+          depreciacionHorariaPosesion +
+          financiamientoHorariaPosesion +
+          seguroHorariaPosesion;
+
+        // Utilidad sobre el subtotal de posesión
+        const utilidadPosesion =
+          subtotalPosesion * Number(machine.modelo?.porcentaje_utilidad || 0);
+
+        // Recalcular subtotal variable con el valor correcto usando las categorías calculadas
+        const subtotalVariableCorregido =
+          mantenimientoPreventivo +
+          mantenimientoCorrectivo +
+          neumaticos +
+          gets +
+          manoObraCalculada;
+
+        console.log(`[DEBUG] ===== SUBTOTAL VARIABLE CORREGIDO =====`);
+        console.log(
+          `[DEBUG] Mantenimiento Preventivo: ${mantenimientoPreventivo}`,
+        );
+        console.log(
+          `[DEBUG] Mantenimiento Correctivo: ${mantenimientoCorrectivo}`,
+        );
+        console.log(`[DEBUG] Neumáticos: ${neumaticos}`);
+        console.log(`[DEBUG] Gets: ${gets}`);
+        console.log(`[DEBUG] Mano de Obra: ${manoObraCalculada}`);
+        console.log(
+          `[DEBUG] SUBTOTAL VARIABLE FINAL: ${subtotalVariableCorregido}`,
+        );
+        console.log(`[DEBUG] ============================================`);
+
+        // Utilidad sobre subtotal variable
+        const utilidadVariableCalculada =
+          subtotalVariableCorregido *
+          Number(machine.modelo?.porcentaje_utilidad || 0);
+
+        return {
+          horasMinimas: esc.horasMinimas,
+          gradoOperatividad: esc.gradoOperatividad,
+          factorMercado: esc.factorMercado,
+          horasUsoAnual,
+          seccion1: {
+            descripcion: {
+              item: machine.id,
+              equipo: machine.modelo?.equipo?.nombre || null,
+              marca: machine.modelo?.marca?.nombre || null,
+              modelo: machine.modelo?.nombre || null,
+              horometroInicial: machine.horometro_inicial,
+              estado: machine.estado,
+              idEquipo: machine.id_equipo_interno,
+            },
+            operacion: {
+              horasMinimas: esc.horasMinimas,
+              politicaDepreciacionAnos: machine.politica_depreciacion,
+              horasUsoAnual: esc.horasMinimas * 12,
+            },
           },
-          operacion: {
-            horasMinimas: esc.horasMinimas,
-            politicaDepreciacionAnos: machine.politica_depreciacion,
-            horasUsoAnual: esc.horasMinimas * 12,
+          seccion2: {
+            descripcion: {
+              valorSimilarNuevo: valorSimilarNuevo,
+              valorResidual10: valorResidual10,
+              vidaUtilFabricante: vidaUtilFabricante,
+              depreciacionTeorica: depreciacionTeorica,
+              gradoOperatividad: esc.gradoOperatividad,
+              valorComercialTeorico: valorComercialTeorico,
+              factorMercado: esc.factorMercado,
+              valorComercialReal: valorComercialReal,
+              porcentajeValorComercialReal: porcentajeValorComercialReal,
+              depreciacionReal: depreciacionReal,
+              mesPorAnio: dto.mesesPorAnio || 12,
+              aniosFinanciamiento: dto.aniosFinanciamiento || 0,
+              tasaFinanciamiento: dto.tasaFinanciamiento || 0,
+              aniosSeguro: dto.aniosSeguro || 0,
+              tasaSeguro: dto.tasaSeguro || 0,
+            },
+            ratiosUsdHr: {
+              costoMPrevLubricantes: ratios.lubricantes,
+              costoMPrevFiltros: ratios.filtros,
+              costoMPrevMaterialesFerreteria: ratios.materialesFerreteria,
+              costoMCorrMaterialesElectricos: ratios.materialesElectricos,
+              costoMCorrMangueras: ratios.mangueras,
+              costoMCorrMenores: ratios.menores,
+              costoMCorrMayores: totalPptoPics / horasUsoAnual, // Usar el total dividido por horas anuales
+              // Componentes reales de la BD (IDs 1-7)
+              motor:
+                (componentesMap.motor * ratios.mayores * horasUsoAnual) /
+                vidaUtilFabricante,
+              transmision:
+                (componentesMap.transmision * ratios.mayores * horasUsoAnual) /
+                vidaUtilFabricante,
+              convertidor:
+                (componentesMap.convertidor * ratios.mayores * horasUsoAnual) /
+                vidaUtilFabricante,
+              mandosFinales:
+                (componentesMap.mandosFinales *
+                  ratios.mayores *
+                  horasUsoAnual) /
+                vidaUtilFabricante,
+              diferenciales:
+                (componentesMap.diferenciales *
+                  ratios.mayores *
+                  horasUsoAnual) /
+                vidaUtilFabricante,
+              sistemaHidraulico:
+                (componentesMap.sistemaHidraulico *
+                  ratios.mayores *
+                  horasUsoAnual) /
+                vidaUtilFabricante,
+              sistemaElectrico:
+                (componentesMap.sistemaElectrico *
+                  ratios.mayores *
+                  horasUsoAnual) /
+                vidaUtilFabricante,
+              costoMantenimientoNeumaticos:
+                (ratios.neumaticos * horasUsoAnual) / vidaUtilFabricante,
+              costoMantenimientoSoldaduraEstructuras:
+                ratios.soldaduraEstructuras,
+              costoMantenimientoGets: ratios.gets,
+              pptoPics: totalPptoPics,
+              incidenciaPicSobreValorNuevo: totalPptoPics / valorSimilarNuevo,
+            },
           },
-        },
-        seccion2: {
-          descripcion: {
-            valorSimilarNuevo: valorSimilarNuevo,
-            valorResidual10: valorResidual10,
-            vidaUtilFabricante: vidaUtilFabricante,
-            depreciacionTeorica: depreciacionTeorica,
-            gradoOperatividad: esc.gradoOperatividad,
-            valorComercialTeorico: valorComercialTeorico,
-            factorMercado: esc.factorMercado,
-            valorComercialReal: valorComercialReal,
-            porcentajeValorComercialReal: porcentajeValorComercialReal,
-            depreciacionReal: depreciacionReal,
-            mesPorAnio: dto.mesesPorAnio || 12,
-            aniosFinanciamiento: dto.aniosFinanciamiento || 0,
-            tasaFinanciamiento: dto.tasaFinanciamiento || 0,
-            aniosSeguro: dto.aniosSeguro || 0,
-            tasaSeguro: dto.tasaSeguro || 0,
+          seccion3: {
+            posesion: {
+              depreciacion: depreciacionHorariaPosesion,
+              financiamiento: financiamientoHorariaPosesion,
+              seguroTrec: seguroHorariaPosesion,
+              subtotal: subtotalPosesion,
+              subtotalFijos: subtotalPosesion, // Mismo valor que subtotal
+              gastoDistribuibles: 0,
+              utilidad: 0,
+              totalCostoFijo: subtotalPosesion, // subtotal + utilidad
+            },
           },
-          ratiosUsdHr: {
-            costoMPrevLubricantes: ratios.lubricantes,
-            costoMPrevFiltros: ratios.filtros,
-            costoMPrevMaterialesFerreteria: ratios.materialesFerreteria,
-            costoMCorrMaterialesElectricos: ratios.materialesElectricos,
-            costoMCorrMangueras: ratios.mangueras,
-            costoMCorrMenores: ratios.menores,
-            costoMCorrMayores: totalPptoPics / horasUsoAnual, // Usar el total dividido por horas anuales
-            // Componentes reales de la BD (IDs 1-7)
-            motor:
-              (componentesMap.motor * ratios.mayores * horasUsoAnual) /
-              vidaUtilFabricante,
-            transmision:
-              (componentesMap.transmision * ratios.mayores * horasUsoAnual) /
-              vidaUtilFabricante,
-            convertidor:
-              (componentesMap.convertidor * ratios.mayores * horasUsoAnual) /
-              vidaUtilFabricante,
-            mandosFinales:
-              (componentesMap.mandosFinales * ratios.mayores * horasUsoAnual) /
-              vidaUtilFabricante,
-            diferenciales:
-              (componentesMap.diferenciales * ratios.mayores * horasUsoAnual) /
-              vidaUtilFabricante,
-            sistemaHidraulico:
-              (componentesMap.sistemaHidraulico *
-                ratios.mayores *
-                horasUsoAnual) /
-              vidaUtilFabricante,
-            sistemaElectrico:
-              (componentesMap.sistemaElectrico *
-                ratios.mayores *
-                horasUsoAnual) /
-              vidaUtilFabricante,
-            costoMantenimientoNeumaticos:
-              (ratios.neumaticos * horasUsoAnual) / vidaUtilFabricante,
-            costoMantenimientoSoldaduraEstructuras: ratios.soldaduraEstructuras,
-            costoMantenimientoGets: ratios.gets,
-            pptoPics: totalPptoPics,
-            incidenciaPicSobreValorNuevo: totalPptoPics / valorSimilarNuevo,
-          },
-        },
-        seccion3: {
-          posesion: {
-            depreciacion: depreciacionHorariaPosesion,
-            financiamiento: financiamientoHorariaPosesion,
-            seguroTrec: seguroHorariaPosesion,
-            subtotal: subtotalPosesion,
-            subtotalFijos: subtotalPosesion, // Mismo valor que subtotal
-            gastoDistribuibles: 0,
+          seccion4: {
+            mantenimientoPreventivo: mantenimientoPreventivo,
+            mantenimientoCorrectivo: mantenimientoCorrectivo,
+            estructural: ratios.soldaduraEstructuras,
+            neumaticos: neumaticos,
+            manoDeObraTecnico: manoObraCalculada,
+            elementosDesgaste: gets,
+            subtotalVariable: subtotalVariableCorregido,
             utilidad: 0,
-            totalCostoFijo: subtotalPosesion, // subtotal + utilidad
+            totalCostoVariable: subtotalVariableCorregido,
           },
-        },
-        seccion4: {
-          mantenimientoPreventivo:
-            ratios.lubricantes + ratios.filtros + ratios.materialesFerreteria,
-          mantenimientoCorrectivo:
-            ratios.materialesElectricos +
-            ratios.mangueras +
-            ratios.menores +
-            ratios.soldaduraEstructuras +
-            totalPptoPics / horasUsoAnual,
-          estructural: ratios.soldaduraEstructuras,
-          neumaticos: ratios.neumaticos,
-          manoDeObraTecnico: dto.mano_de_obra_tecnico || 0,
-          elementosDesgaste: ratios.gets,
-          subtotalVariable: subtotalVariableCalculado,
-          utilidad: 0,
-          totalCostoVariable: subtotalVariableCalculado,
-        },
-        totales: {
-          total: esc.horasMinimas,
-          fijosMasVariables: subtotalPosesion + subtotalVariableCalculado,
-        },
-      };
-    });
+          totales: {
+            total: esc.horasMinimas,
+            fijosMasVariables: subtotalPosesion + subtotalVariableCorregido,
+          },
+        };
+      });
 
-    return {
-      version: '1.0.0',
-      comentario: dto.comentario,
-      machine: {
-        id: Number(machine.id),
-        item: Number(machine.id),
-        equipo: machine.modelo?.equipo?.nombre || null,
-        marca: machine.modelo?.marca?.nombre || null,
-        modelo: machine.modelo?.nombre || null,
-        horometroInicial: Number(machine.horometro_inicial || 0),
-        estado: machine.estado,
-        idEquipo: machine.id_equipo_interno
-          ? Number(machine.id_equipo_interno)
-          : null,
-      },
-      parametros: {
-        machineId: Number(dto.machineId),
-        posesionId: Number(dto.posesionId),
-        mesesPorAnio: Number(dto.mesesPorAnio || 12),
-        tasaFinanciamiento: Number(dto.tasaFinanciamiento || 0),
-        aniosFinanciamiento: Number(dto.aniosFinanciamiento || 0),
-        tasaSeguro: Number(dto.tasaSeguro || 0),
-        aniosSeguro: Number(dto.aniosSeguro || 0),
+      const resultado = {
+        version: '1.0.0',
         comentario: dto.comentario,
-        usuarioId: dto.usuarioId,
-        incluyeGastosDistribuibles: Boolean(
-          dto.incluyeGastosDistribuibles || false,
-        ),
-        costoMCorrMayores: Number(dto.costoMCorrMayores || 0),
-        porcentajeUtilidad: Number(machine.modelo?.porcentaje_utilidad || 0),
-        fechaCalculo: new Date().toISOString(),
-      },
-      ratiosMeta: ratiosRaw.map((r) => ({
-        id: Number(r.id),
-        tipo: r.tipo_ratio?.nombre,
-        categoria: r.tipo_ratio?.categoria,
-        valor: Number(r.valor || 0),
-        fecha_efectiva: r.fecha_efectiva,
-      })),
-      componentesMeta: componentesRaw.map((c) => ({
-        id: Number(c.id),
-        componente: c.componente.nombre,
-        monto_usd: Number(c.monto_usd || 0),
-        pcr: Number(c.pcr || 0),
-        distribucion: Number(c.distribucion || 0),
-        monto_aplicado_al_proyecto: Number(c.monto_aplicado_al_proyecto || 0),
-        fecha_efectiva: c.fecha_efectiva,
-      })),
-      escenarios: escenariosCalculo,
-    };
+        machine: {
+          id: Number(machine.id),
+          item: Number(machine.id),
+          equipo: machine.modelo?.equipo?.nombre || null,
+          marca: machine.modelo?.marca?.nombre || null,
+          modelo: machine.modelo?.nombre || null,
+          horometroInicial: Number(machine.horometro_inicial || 0),
+          estado: machine.estado,
+          idEquipo: machine.id_equipo_interno
+            ? Number(machine.id_equipo_interno)
+            : null,
+        },
+        parametros: {
+          machineId: Number(dto.machineId),
+          posesionId: Number(dto.posesionId),
+          mesesPorAnio: Number(dto.mesesPorAnio || 12),
+          tasaFinanciamiento: Number(dto.tasaFinanciamiento || 0),
+          aniosFinanciamiento: Number(dto.aniosFinanciamiento || 0),
+          tasaSeguro: Number(dto.tasaSeguro || 0),
+          aniosSeguro: Number(dto.aniosSeguro || 0),
+          comentario: dto.comentario,
+          usuarioId: dto.usuarioId,
+          incluyeGastosDistribuibles: Boolean(
+            dto.incluyeGastosDistribuibles || false,
+          ),
+          costoMCorrMayores: Number(dto.costoMCorrMayores || 0),
+          porcentajeUtilidad: Number(machine.modelo?.porcentaje_utilidad || 0),
+          fechaCalculo: new Date().toISOString(),
+        },
+        ratiosMeta: ratiosRaw.map((r) => ({
+          id: Number(r.id),
+          tipo: r.tipo_ratio?.nombre,
+          categoria: r.tipo_ratio?.categoria,
+          valor: Number(r.valor || 0),
+          fecha_efectiva: r.fecha_efectiva,
+        })),
+        componentesMeta: componentesRaw.map((c) => ({
+          id: Number(c.id),
+          componente: c.componente.nombre,
+          monto_usd: Number(c.monto_usd || 0),
+          pcr: Number(c.pcr || 0),
+          distribucion: Number(c.distribucion || 0),
+          monto_aplicado_al_proyecto: Number(c.monto_aplicado_al_proyecto || 0),
+          fecha_efectiva: c.fecha_efectiva,
+        })),
+        escenarios: escenariosCalculo,
+      };
+
+      // Aplicar serialización de BigInt antes de devolver
+      return serializeBigInt(resultado);
+    } catch (error) {
+      console.error(`[ERROR] Error en preview:`, error);
+      throw error;
+    }
   }
 
   /**
@@ -1150,10 +1270,18 @@ export class InformeCostoHorarioService {
           `[RESUMEN] Posesión: ${Posesion.toFixed(4)} = ${D.toFixed(4)} + ${F.toFixed(4)} + ${S.toFixed(4)}`,
         );
 
-        // Rym: Mp + Mc + Est + Neu + Gets
-        const Rym = Mp + Mc + Est + Neu + Gets;
+        // Calcular mano de obra técnico como índice multiplicador
+        const indiceManoObra = 0; // Por defecto 0 en el resumen, se puede pasar como parámetro
+        const sumaComponentesMantenimiento = Mp + Est + Mc + Neu + Gets;
+        const manoObraCalculada = indiceManoObra * sumaComponentesMantenimiento;
         console.log(
-          `[RESUMEN] RyM: ${Rym.toFixed(4)} = ${Mp.toFixed(4)} + ${Mc.toFixed(4)} + ${Est.toFixed(4)} + ${Neu.toFixed(4)} + ${Gets.toFixed(4)}`,
+          `[RESUMEN] Mano de Obra Técnico: ${manoObraCalculada.toFixed(4)} = ${indiceManoObra} * ${sumaComponentesMantenimiento.toFixed(4)}`,
+        );
+
+        // Rym: Mp + Mc + Est + Neu + Gets + Mano de Obra
+        const Rym = Mp + Mc + Est + Neu + Gets + manoObraCalculada;
+        console.log(
+          `[RESUMEN] RyM: ${Rym.toFixed(4)} = ${Mp.toFixed(4)} + ${Mc.toFixed(4)} + ${Est.toFixed(4)} + ${Neu.toFixed(4)} + ${Gets.toFixed(4)} + ${manoObraCalculada.toFixed(4)}`,
         );
 
         // MOTec: Rym * 0.25
@@ -1189,6 +1317,7 @@ export class InformeCostoHorarioService {
           Est: Number(Est.toFixed(2)),
           Neu: Number(Neu.toFixed(2)),
           Gets: Number(Gets.toFixed(2)),
+          'M.O.Tec': Number(manoObraCalculada.toFixed(2)),
           Posesión: Number(Posesion.toFixed(2)),
           RyM: Number(Rym.toFixed(2)),
           MOTec: Number(MOTec.toFixed(2)),
@@ -1198,7 +1327,7 @@ export class InformeCostoHorarioService {
         };
       });
 
-      return {
+      const resultado = {
         machine: {
           id: Number(machine.id),
           item: Number(machine.id),
@@ -1220,6 +1349,8 @@ export class InformeCostoHorarioService {
         },
         resumen: resumenEscenarios,
       };
+
+      return serializeBigInt(resultado);
     } catch (error: unknown) {
       console.error('Error generating resumen costo horario:', error);
       throw error;
@@ -1255,6 +1386,7 @@ export class InformeCostoHorarioService {
       // Calcular valores individuales
       const posesion = Number((seccion3.subtotal || 0).toFixed(2));
       const rym = Number((seccion4.subtotalVariable || 0).toFixed(2));
+      const manoObra = Number((seccion4.manoDeObraTecnico || 0).toFixed(2));
       const motec = Number(
         ((seccion4.subtotalVariable || 0) * 0.25).toFixed(2),
       ); // 25% de RyM
@@ -1273,6 +1405,7 @@ export class InformeCostoHorarioService {
         Est: Number((seccion4.estructural || 0).toFixed(2)),
         Neu: Number((seccion4.neumaticos || 0).toFixed(2)),
         Gets: Number((seccion4.elementosDesgaste || 0).toFixed(2)),
+        'M.O.Tec': manoObra,
         Posesión: posesion,
         RyM: rym,
         MOTec: motec,
@@ -1287,7 +1420,7 @@ export class InformeCostoHorarioService {
       };
     });
 
-    return {
+    const resultado = {
       machine: {
         id: Number(machine.id),
         item: Number(machine.id),
@@ -1333,6 +1466,8 @@ export class InformeCostoHorarioService {
       },
       resumen: resumen,
     };
+
+    return serializeBigInt(resultado);
   }
 
   /**

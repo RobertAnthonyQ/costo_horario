@@ -11,7 +11,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Loader2, AlertCircle } from "lucide-react";
+import { Loader2, AlertCircle, ChevronDown, ChevronRight } from "lucide-react";
 import supabase, { SUPABASE_BUCKET, getPublicUrl } from "@/lib/supabaseClient";
 import {
   CreateMachineDto,
@@ -19,6 +19,7 @@ import {
   Machine,
   Marca,
   Equipo,
+  DatosAdicionalesMaquina,
 } from "../models/types";
 import { relationsService } from "../services/relationsService";
 
@@ -31,6 +32,8 @@ interface MachineFormData extends Omit<CreateMachineDto, "modelo_id"> {
   vida_util_fabricante?: number;
   // Campo de información adicional como texto
   informacion_adicional?: string;
+  // Datos adicionales estructurados
+  datos_adicionales?: DatosAdicionalesMaquina;
 }
 
 interface MachineFormProps {
@@ -65,6 +68,17 @@ export const MachineForm: React.FC<MachineFormProps> = ({
     vida_util_fabricante: undefined,
     // Información adicional como texto
     informacion_adicional: "",
+    // Datos adicionales estructurados
+    datos_adicionales: {
+      procedencia_pais: "",
+      potencia_nominal_hp: "",
+      consumo_combustible_lh: undefined,
+      equipos_comercializados_peru: undefined,
+      plazo_entrega_dias: undefined,
+      capacitacion_horas: undefined,
+      tiempo_atencion_repuestos_dias: undefined,
+      ofrece_financiamiento: false,
+    },
   });
 
   // Estados para las opciones
@@ -74,6 +88,7 @@ export const MachineForm: React.FC<MachineFormProps> = ({
   const [error, setError] = useState<string>("");
   const [uploading, setUploading] = useState(false);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [showAdditionalData, setShowAdditionalData] = useState(false);
 
   // Cargar datos iniciales
   useEffect(() => {
@@ -102,6 +117,17 @@ export const MachineForm: React.FC<MachineFormProps> = ({
         informacion_adicional: machine.otros_json
           ? JSON.stringify(machine.otros_json, null, 2)
           : "",
+        // Datos adicionales estructurados
+        datos_adicionales: machine.otros_json || {
+          procedencia_pais: "",
+          potencia_nominal_hp: "",
+          consumo_combustible_lh: undefined,
+          equipos_comercializados_peru: undefined,
+          plazo_entrega_dias: undefined,
+          capacitacion_horas: undefined,
+          tiempo_atencion_repuestos_dias: undefined,
+          ofrece_financiamiento: false,
+        },
       });
     }
   }, [machine, marcas, equipos]);
@@ -149,6 +175,27 @@ export const MachineForm: React.FC<MachineFormProps> = ({
     }));
   };
 
+  const handleAdditionalDataChange = (
+    field: keyof DatosAdicionalesMaquina,
+    value: any
+  ) => {
+    setFormData((prev) => ({
+      ...prev,
+      datos_adicionales: {
+        ...prev.datos_adicionales,
+        [field]: value,
+      },
+    }));
+  };
+
+  const handleAdditionalDataNumberChange = (
+    field: keyof DatosAdicionalesMaquina,
+    value: string
+  ) => {
+    const numValue = value === "" ? undefined : Number(value);
+    handleAdditionalDataChange(field, numValue);
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
@@ -173,14 +220,36 @@ export const MachineForm: React.FC<MachineFormProps> = ({
     }
 
     try {
-      // Procesar información adicional
-      let otros_json = null;
-      if (formData.informacion_adicional?.trim()) {
+      // Procesar datos adicionales estructurados
+      let otros_json: DatosAdicionalesMaquina | null = null;
+
+      // Verificar si hay datos adicionales estructurados con valores no vacíos
+      const hasAdditionalData =
+        formData.datos_adicionales &&
+        Object.values(formData.datos_adicionales).some(
+          (value) => value !== "" && value !== undefined && value !== null
+        );
+
+      if (hasAdditionalData) {
+        // Limpiar campos vacíos
+        const cleanedData: DatosAdicionalesMaquina = {};
+        if (formData.datos_adicionales) {
+          Object.entries(formData.datos_adicionales).forEach(([key, value]) => {
+            if (value !== "" && value !== undefined && value !== null) {
+              (cleanedData as any)[key] = value;
+            }
+          });
+        }
+        otros_json = cleanedData;
+      }
+
+      // Si no hay datos estructurados pero sí información adicional como texto
+      if (!otros_json && formData.informacion_adicional?.trim()) {
         try {
           otros_json = JSON.parse(formData.informacion_adicional);
         } catch {
           // Si no es JSON válido, tratarlo como texto plano
-          otros_json = { informacion: formData.informacion_adicional };
+          otros_json = { informacion: formData.informacion_adicional } as any;
         }
       }
 
@@ -432,10 +501,10 @@ export const MachineForm: React.FC<MachineFormProps> = ({
         <h3 className="text-lg font-medium">Información de la Máquina</h3>
       </div>
 
-      {/* Estado y Horómetro */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      {/* Estado, Horómetro y Valor de Adquisición */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <div className="space-y-2">
-          <Label htmlFor="estado">Estado</Label>
+          <Label htmlFor="estado">Estado *</Label>
           <Select
             value={formData.estado}
             onValueChange={(value) => handleInputChange("estado", value)}
@@ -455,7 +524,7 @@ export const MachineForm: React.FC<MachineFormProps> = ({
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="horometro_inicial">Horómetro inicial (horas)</Label>
+          <Label htmlFor="horometro_inicial">Horómetro Inicial (horas)</Label>
           <Input
             id="horometro_inicial"
             type="number"
@@ -467,13 +536,10 @@ export const MachineForm: React.FC<MachineFormProps> = ({
             placeholder="Ej: 1000"
           />
         </div>
-      </div>
 
-      {/* Valores financieros */}
-      <div className="grid grid-cols-1 gap-4">
         <div className="space-y-2">
           <Label htmlFor="valor_similar_nuevo">
-            Valor de adquisición (USD)
+            Valor de Adquisición (USD) *
           </Label>
           <Input
             id="valor_similar_nuevo"
@@ -489,17 +555,18 @@ export const MachineForm: React.FC<MachineFormProps> = ({
         </div>
       </div>
 
-      {/* Política de depreciación */}
+      {/* Política de Depreciación y Tiempo de Entrega */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div className="space-y-2">
           <Label htmlFor="politica_depreciacion">
-            Política de depreciación (%)
+            Política de Depreciación (%)
           </Label>
           <Input
             id="politica_depreciacion"
             type="number"
             min="0"
             max="100"
+            step="0.1"
             value={formData.politica_depreciacion ?? ""}
             onChange={(e) =>
               handleNumberChange("politica_depreciacion", e.target.value)
@@ -508,45 +575,8 @@ export const MachineForm: React.FC<MachineFormProps> = ({
           />
         </div>
 
-        {/* Información sobre código automático */}
         <div className="space-y-2">
-          <Label>Código de Máquina</Label>
-          <div className="p-3 bg-muted rounded-md text-sm text-muted-foreground">
-            {!isEditing &&
-            formData.marca_id &&
-            formData.equipo_id &&
-            formData.modelo_nombre ? (
-              <>
-                Se generará automáticamente: <br />
-                <strong>
-                  {equipos
-                    .find((e) => e.id === formData.equipo_id)
-                    ?.nombre.slice(0, 3)
-                    .toUpperCase() || "XXX"}
-                  -
-                  {marcas
-                    .find((m) => m.id === formData.marca_id)
-                    ?.nombre.slice(0, 3)
-                    .toUpperCase() || "XXX"}
-                  -{formData.modelo_nombre.slice(0, 3).toUpperCase() || "XXX"}
-                  -###
-                </strong>
-              </>
-            ) : isEditing && machine?.id_equipo_interno ? (
-              <>
-                Código actual: <strong>{machine.id_equipo_interno}</strong>
-              </>
-            ) : (
-              "Se generará automáticamente basado en Equipo + Marca + Modelo"
-            )}
-          </div>
-        </div>
-      </div>
-
-      {/* Tiempo de entrega e imagen */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div className="space-y-2">
-          <Label htmlFor="tiempo_entrega">Tiempo de entrega (meses)</Label>
+          <Label htmlFor="tiempo_entrega">Tiempo de Entrega (meses)</Label>
           <Input
             id="tiempo_entrega"
             type="number"
@@ -558,55 +588,303 @@ export const MachineForm: React.FC<MachineFormProps> = ({
             placeholder="Ej: 6"
           />
         </div>
+      </div>
 
-        <div className="space-y-2">
-          <Label htmlFor="imagen">Imagen de la máquina</Label>
-          <Input
-            id="imagen"
-            type="file"
-            accept="image/*"
-            disabled={uploading}
-            onChange={(e) => handleImageSelect(e.target.files?.[0] || null)}
-          />
-          {(uploading || formData.link_imagen || previewUrl) && (
-            <div className="mt-2 flex items-center gap-3">
-              {uploading && (
-                <>
-                  <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
-                  <span className="text-xs text-muted-foreground">
-                    Subiendo imagen...
-                  </span>
-                </>
-              )}
-              {(previewUrl || formData.link_imagen) && (
-                <img
-                  src={(previewUrl || formData.link_imagen) as string}
-                  alt="Vista previa"
-                  className="h-16 w-16 object-cover rounded border"
-                />
-              )}
-            </div>
-          )}
-          {formData.link_imagen && (
-            <p className="text-xs text-muted-foreground break-all">
-              URL: {formData.link_imagen}
-            </p>
+      {/* Código de Máquina - Solo información */}
+      <div className="space-y-2">
+        <Label>Código de Máquina</Label>
+        <div className="p-3 bg-muted rounded-md text-sm text-muted-foreground">
+          {!isEditing &&
+          formData.marca_id &&
+          formData.equipo_id &&
+          formData.modelo_nombre ? (
+            <>
+              Se generará automáticamente: <br />
+              <strong>
+                {equipos
+                  .find((e) => e.id === formData.equipo_id)
+                  ?.nombre.slice(0, 3)
+                  .toUpperCase() || "XXX"}
+                -
+                {marcas
+                  .find((m) => m.id === formData.marca_id)
+                  ?.nombre.slice(0, 3)
+                  .toUpperCase() || "XXX"}
+                -{formData.modelo_nombre.slice(0, 3).toUpperCase() || "XXX"}
+                -###
+              </strong>
+            </>
+          ) : isEditing && machine?.id_equipo_interno ? (
+            <>
+              Código actual: <strong>{machine.id_equipo_interno}</strong>
+            </>
+          ) : (
+            "Se generará automáticamente basado en Equipo + Marca + Modelo"
           )}
         </div>
       </div>
 
+      {/* Imagen de la Máquina */}
+      <div className="space-y-2">
+        <Label htmlFor="imagen">Imagen de la Máquina</Label>
+        <Input
+          id="imagen"
+          type="file"
+          accept="image/*"
+          disabled={uploading}
+          onChange={(e) => handleImageSelect(e.target.files?.[0] || null)}
+        />
+        {(uploading || formData.link_imagen || previewUrl) && (
+          <div className="mt-2 flex items-center gap-3">
+            {uploading && (
+              <>
+                <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                <span className="text-xs text-muted-foreground">
+                  Subiendo imagen...
+                </span>
+              </>
+            )}
+            {(previewUrl || formData.link_imagen) && (
+              <img
+                src={(previewUrl || formData.link_imagen) as string}
+                alt="Vista previa"
+                className="h-16 w-16 object-cover rounded border"
+              />
+            )}
+          </div>
+        )}
+        {formData.link_imagen && (
+          <p className="text-xs text-muted-foreground break-all">
+            URL: {formData.link_imagen}
+          </p>
+        )}
+      </div>
+
       {/* Información adicional */}
       <div className="space-y-2">
-        <Label htmlFor="informacion_adicional">Información Adicional</Label>
+        <Label htmlFor="informacion_adicional">
+          Información Adicional (JSON)
+        </Label>
         <Textarea
           id="informacion_adicional"
           value={formData.informacion_adicional || ""}
           onChange={(e) =>
             handleInputChange("informacion_adicional", e.target.value)
           }
-          placeholder="Información adicional sobre la máquina..."
+          placeholder="Información adicional en formato JSON..."
           rows={3}
         />
+        <p className="text-xs text-muted-foreground">
+          Campo legacy. Se recomienda usar los "Datos Adicionales Estructurados"
+          a continuación.
+        </p>
+      </div>
+
+      {/* Datos Adicionales Estructurados */}
+      <div className="space-y-4">
+        <Button
+          type="button"
+          variant="outline"
+          className="w-full justify-between"
+          onClick={() => setShowAdditionalData(!showAdditionalData)}
+        >
+          <span>Datos Adicionales Estructurados (Opcional)</span>
+          {showAdditionalData ? (
+            <ChevronDown className="h-4 w-4" />
+          ) : (
+            <ChevronRight className="h-4 w-4" />
+          )}
+        </Button>
+
+        {showAdditionalData && (
+          <div className="space-y-4 mt-4">
+            <div className="border rounded-lg p-4 bg-muted/10">
+              <div className="mb-4">
+                <h4 className="text-sm font-medium">
+                  Información Técnica y Comercial
+                </h4>
+                <p className="text-xs text-muted-foreground">
+                  Datos estructurados sobre especificaciones técnicas,
+                  comerciales y de servicio
+                </p>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {/* Procedencia País */}
+                <div className="space-y-2">
+                  <Label htmlFor="procedencia_pais">País de Procedencia</Label>
+                  <Input
+                    id="procedencia_pais"
+                    value={formData.datos_adicionales?.procedencia_pais || ""}
+                    onChange={(e) =>
+                      handleAdditionalDataChange(
+                        "procedencia_pais",
+                        e.target.value
+                      )
+                    }
+                    placeholder="Ej: Estados Unidos"
+                  />
+                </div>
+
+                {/* Potencia Nominal */}
+                <div className="space-y-2">
+                  <Label htmlFor="potencia_nominal_hp">
+                    Potencia Nominal (HP)
+                  </Label>
+                  <Input
+                    id="potencia_nominal_hp"
+                    type="text"
+                    value={
+                      formData.datos_adicionales?.potencia_nominal_hp ?? ""
+                    }
+                    onChange={(e) =>
+                      handleAdditionalDataChange(
+                        "potencia_nominal_hp",
+                        e.target.value
+                      )
+                    }
+                    placeholder="Ej: 231 HP @ 2,000"
+                  />
+                </div>
+
+                {/* Consumo de Combustible */}
+                <div className="space-y-2">
+                  <Label htmlFor="consumo_combustible_lh">
+                    Consumo Combustible (L/h)
+                  </Label>
+                  <Input
+                    id="consumo_combustible_lh"
+                    type="number"
+                    min="0"
+                    step="0.1"
+                    value={
+                      formData.datos_adicionales?.consumo_combustible_lh ?? ""
+                    }
+                    onChange={(e) =>
+                      handleAdditionalDataNumberChange(
+                        "consumo_combustible_lh",
+                        e.target.value
+                      )
+                    }
+                    placeholder="Ej: 15.5"
+                  />
+                </div>
+
+                {/* Equipos Comercializados en Perú */}
+                <div className="space-y-2">
+                  <Label htmlFor="equipos_comercializados_peru">
+                    Equipos en Perú
+                  </Label>
+                  <Input
+                    id="equipos_comercializados_peru"
+                    type="number"
+                    min="0"
+                    value={
+                      formData.datos_adicionales
+                        ?.equipos_comercializados_peru ?? ""
+                    }
+                    onChange={(e) =>
+                      handleAdditionalDataNumberChange(
+                        "equipos_comercializados_peru",
+                        e.target.value
+                      )
+                    }
+                    placeholder="Ej: 150"
+                  />
+                </div>
+
+                {/* Plazo de Entrega */}
+                <div className="space-y-2">
+                  <Label htmlFor="plazo_entrega_dias">
+                    Plazo Entrega - equipo (meses)
+                  </Label>
+                  <Input
+                    id="plazo_entrega_dias"
+                    type="number"
+                    min="0"
+                    value={formData.datos_adicionales?.plazo_entrega_dias ?? ""}
+                    onChange={(e) =>
+                      handleAdditionalDataNumberChange(
+                        "plazo_entrega_dias",
+                        e.target.value
+                      )
+                    }
+                    placeholder="Ej: 45"
+                  />
+                </div>
+
+                {/* Horas de Capacitación */}
+                <div className="space-y-2">
+                  <Label htmlFor="capacitacion_horas">
+                    Capacitación (horas)
+                  </Label>
+                  <Input
+                    id="capacitacion_horas"
+                    type="number"
+                    min="0"
+                    value={formData.datos_adicionales?.capacitacion_horas ?? ""}
+                    onChange={(e) =>
+                      handleAdditionalDataNumberChange(
+                        "capacitacion_horas",
+                        e.target.value
+                      )
+                    }
+                    placeholder="Ej: 40"
+                  />
+                </div>
+
+                {/* Tiempo de Atención de Repuestos */}
+                <div className="space-y-2">
+                  <Label htmlFor="tiempo_atencion_repuestos_dias">
+                    Atención Repuestos (días)
+                  </Label>
+                  <Input
+                    id="tiempo_atencion_repuestos_dias"
+                    type="text"
+                    value={
+                      formData.datos_adicionales
+                        ?.tiempo_atencion_repuestos_dias ?? ""
+                    }
+                    onChange={(e) =>
+                      handleAdditionalDataChange(
+                        "tiempo_atencion_repuestos_dias",
+                        e.target.value
+                      )
+                    }
+                    placeholder="Ej: 3-5"
+                  />
+                </div>
+
+                {/* Ofrece Financiamiento */}
+                <div className="space-y-2">
+                  <Label htmlFor="ofrece_financiamiento">
+                    Ofrece Financiamiento
+                  </Label>
+                  <Select
+                    value={
+                      formData.datos_adicionales?.ofrece_financiamiento?.toString() ||
+                      "false"
+                    }
+                    onValueChange={(value) =>
+                      handleAdditionalDataChange(
+                        "ofrece_financiamiento",
+                        value === "true"
+                      )
+                    }
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="false">No</SelectItem>
+                      <SelectItem value="true">Sí</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Botones */}

@@ -366,7 +366,7 @@ export const IndividualResultsTable = ({
                 Math.max(...results.map((r) => r.valorComercialReal))
               )}
             </p>
-            <p className="text-sm text-muted-foreground">Mejor Valor</p>
+            <p className="text-sm text-muted-foreground">Mejor Valor comercial</p>
           </div>
           <div className="text-center">
             <p className="text-2xl font-bold text-blue-600">

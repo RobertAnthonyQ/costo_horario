@@ -209,7 +209,7 @@ export function ParametersForm({
               </div>
 
               <div>
-                <Label>Tasa seguro</Label>
+                <Label>Tasa anual de seguro</Label>
                 <Input
                   type="number"
                   step="0.0001"
@@ -256,10 +256,13 @@ export function ParametersForm({
               </div>
 
               <div>
-                <Label>Mano de Obra Técnico</Label>
+                <Label>Mano de Obra Técnico (Índice)</Label>
                 <Input
                   type="number"
                   step="0.01"
+                  min="0"
+                  max="1"
+                  placeholder="0.10 = 10%"
                   value={params.mano_de_obra_tecnico}
                   onChange={(e) =>
                     onParamsChange({
@@ -269,6 +272,10 @@ export function ParametersForm({
                     })
                   }
                 />
+                <p className="text-xs text-muted-foreground mt-1">
+                  Índice multiplicador (ej: 0.10 = 10% sobre la suma de
+                  mantenimientos)
+                </p>
               </div>
 
               <div className="md:col-span-3">

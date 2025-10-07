@@ -74,7 +74,10 @@ export class ModeloComponentesHistoricoService {
           `Modelo con ID ${createModeloComponentesHistoricoDto.modelo_id} no encontrado`,
         );
       }
-      this.logger.log('Modelo encontrado:', JSON.stringify(modelo, null, 2));
+      this.logger.log(
+        'Modelo encontrado:',
+        JSON.stringify(serializeBigInt(modelo), null, 2),
+      );
 
       // Verificar que el componente existe
       this.logger.log(
@@ -93,7 +96,7 @@ export class ModeloComponentesHistoricoService {
       }
       this.logger.log(
         'Componente encontrado:',
-        JSON.stringify(componenteExists, null, 2),
+        JSON.stringify(serializeBigInt(componenteExists), null, 2),
       );
 
       // Calcular distribución automáticamente usando vida_util
@@ -233,7 +236,10 @@ export class ModeloComponentesHistoricoService {
 
       this.logger.log('Registro creado exitosamente con ID:', registro.id);
       const resultado = this.addCalculatedFields(registro);
-      this.logger.log('Resultado final:', JSON.stringify(resultado, null, 2));
+      this.logger.log(
+        'Resultado final:',
+        JSON.stringify(serializeBigInt(resultado), null, 2),
+      );
       return serializeBigInt(resultado);
     } catch (error) {
       this.logger.error('Error en create:', error);
@@ -575,16 +581,16 @@ export class ModeloComponentesHistoricoService {
       };
     });
 
-    return {
+    return serializeBigInt({
       total_registros: totalRegistros,
       top_componentes: topComponentesWithDetails,
       top_modelos: topModelosWithDetails,
-    };
+    });
   }
 
   // Método auxiliar para obtener máquinas de un modelo con su vida_util
   async getMachinesByModelo(modeloId: number) {
-    return this.prisma.machines.findMany({
+    const machines = await this.prisma.machines.findMany({
       where: { modelo_id: modeloId },
       select: {
         id: true,
@@ -597,5 +603,7 @@ export class ModeloComponentesHistoricoService {
         id_equipo_interno: 'asc',
       },
     });
+
+    return serializeBigIntArray(machines);
   }
 }

@@ -357,12 +357,20 @@ export function LargeReportTable({ report }: LargeReportTableProps) {
       label: "4.2.4. Mayores",
       get: (e) => e.seccion2?.ratiosUsdHr?.costoMCorrMayores,
     },
+    {
+      label: "4.2.5. Soldadura/Estructuras",
+      get: (e) =>
+        e.seccion2?.ratiosUsdHr?.costoMantenimientoSoldaduraEstructuras,
+    },
     { label: "4.3. Neumáticos", get: (e) => e.seccion4?.neumaticos },
     {
       label: "4.4. Gets",
       get: (e) => e.seccion4?.elementosDesgaste,
     },
-    { label: "4.5 Mano de Obra técnica", get: (e) => e.seccion4?.manoDeObraTecnico },
+    {
+      label: "4.5 Mano de Obra técnica",
+      get: (e) => e.seccion4?.manoDeObraTecnico,
+    },
     {
       label: "4.6. Subtotal de costo de mantenimiento",
       get: (e) => e.seccion4?.subtotalVariable,

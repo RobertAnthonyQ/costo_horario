@@ -31,8 +31,36 @@ export class MachinesController {
 
   @Post()
   @HttpCode(HttpStatus.CREATED)
-  @ApiOperation({ summary: 'Crear una nueva máquina' })
-  @ApiBody({ type: CreateMachinesDto })
+  @ApiOperation({
+    summary: 'Crear una nueva máquina',
+    description:
+      'Crea una nueva máquina. Puede incluir datos adicionales en otros_json como procedencia, potencia, consumo, etc.',
+  })
+  @ApiBody({
+    type: CreateMachinesDto,
+    examples: {
+      maquina_completa: {
+        summary: 'Máquina con datos adicionales completos',
+        description: 'Ejemplo de máquina con todos los datos adicionales',
+        value: {
+          modelo_id: 1,
+          estado: 'activo',
+          valor_similar_nuevo: 250000,
+          vida_util: 18000,
+          otros_json: {
+            procedencia_pais: 'Estados Unidos',
+            potencia_nominal_hp: '231 HP @ 2,000',
+            consumo_combustible_lh: 15.5,
+            equipos_comercializados_peru: 150,
+            plazo_entrega_dias: 45,
+            capacitacion_horas: 40,
+            tiempo_atencion_repuestos_dias: 7,
+            ofrece_financiamiento: true,
+          },
+        },
+      },
+    },
+  })
   @ApiResponse({ status: 201, description: 'Máquina creada correctamente' })
   @ApiResponse({ status: 400, description: 'Datos inválidos' })
   create(@Body() createMachinesDto: CreateMachinesDto) {
@@ -109,9 +137,30 @@ export class MachinesController {
   }
 
   @Patch(':id')
-  @ApiOperation({ summary: 'Actualizar una máquina' })
+  @ApiOperation({
+    summary: 'Actualizar una máquina',
+    description:
+      'Actualiza los datos de una máquina existente. Puede actualizar datos adicionales en otros_json.',
+  })
   @ApiParam({ name: 'id', type: Number })
-  @ApiBody({ type: UpdateMachinesDto })
+  @ApiBody({
+    type: UpdateMachinesDto,
+    examples: {
+      actualizar_datos_adicionales: {
+        summary: 'Actualizar solo datos adicionales',
+        description: 'Ejemplo de actualización de datos adicionales',
+        value: {
+          otros_json: {
+            procedencia_pais: 'Japón',
+            potencia_nominal_hp: 180,
+            consumo_combustible_lh: 14.2,
+            tiempo_atencion_repuestos_dias: 5,
+            ofrece_financiamiento: false,
+          },
+        },
+      },
+    },
+  })
   @ApiResponse({ status: 200, description: 'Máquina actualizada' })
   @ApiResponse({ status: 404, description: 'No encontrada' })
   update(

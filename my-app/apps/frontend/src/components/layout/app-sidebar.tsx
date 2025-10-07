@@ -14,6 +14,7 @@ import {
   TrendingUp,
   History,
   ChevronDown,
+  DollarSign,
 } from "lucide-react";
 
 import {
@@ -34,18 +35,17 @@ import {
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
 
-const mainItems = [{ title: "Dashboard", url: "/", icon: Home }];
+const mainItems = [{ title: "Máquinas", url: "/machines", icon: Truck }];
 
-const assetItems = [
-  { title: "Máquinas", url: "/machines", icon: Truck },
-  { title: "Componentes", url: "/components", icon: Wrench },
-];
+const assetItems = [{ title: "Componentes", url: "/components", icon: Wrench }];
 
 const calculationItems = [
   { title: "Ratios", url: "/ratios", icon: BarChart3 },
   { title: "PICs", url: "/pics", icon: FileText },
   { title: "Cálculo de Posesión", url: "/possession", icon: Calculator },
   { title: "Informe Costo Horario", url: "/hourly-cost", icon: TrendingUp },
+  { title: "Flujo de Caja", url: "/cash-flow", icon: DollarSign },
+  { title: "Conclusiones", url: "/conclusions", icon: BarChart3 },
 ];
 
 const reportItems = [
