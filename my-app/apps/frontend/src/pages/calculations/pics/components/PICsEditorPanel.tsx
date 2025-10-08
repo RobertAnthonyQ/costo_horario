@@ -4,8 +4,14 @@ import { PICRecord } from "../models/types";
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { Loader2, Save } from "lucide-react";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Loader2 } from "lucide-react";
 import { componentesService, Componente } from "@/services/componentesService";
 
 interface Props {
@@ -68,34 +74,21 @@ export const PICsEditorPanel: React.FC<Props> = ({ modeloId }) => {
       qc.invalidateQueries({
         queryKey: ["pics", "latest-by-modelo", modeloId],
       });
+      qc.invalidateQueries({
+        queryKey: ["pics", "total-resumen-by-modelo", modeloId],
+      });
     },
   });
 
   const records: PICRecord[] = latestResp?.data || [];
 
   const allComponentes: Componente[] = allComponentesResp?.data || [];
-  // Mezclar: para cada componente global, buscar su último registro (si lo hay) por componente_id
-  const mergedRows = allComponentes
-    .map((c) => {
-      const rec = records.find((r) => r.componente_id === c.id);
-      return (
-        rec ||
-        ({
-          id: -c.id, // id temporal negativo para distinguir nuevos
-          modelo_id: modeloId,
-          componente_id: c.id,
-          pcr: null,
-          monto_usd: null,
-          distribucion: 0,
-          monto_aplicado_al_proyecto: 0,
-          fecha_efectiva: new Date().toISOString(),
-          componente: { id: c.id, nombre: c.nombre },
-        } as PICRecord)
-      );
-    })
-    .sort((a, b) => a.componente_id - b.componente_id);
+  // Mostrar solo filas existentes
+  const mergedRows = [...records].sort(
+    (a, b) => a.componente_id - b.componente_id
+  );
 
-  // Inicializar estado editable para nuevas filas cuando cambie mergedRows
+  // Inicializar estado editable para filas existentes cuando cambie mergedRows
   useEffect(() => {
     if (!mergedRows.length) return;
     setRowState((prev) => {
@@ -157,7 +150,7 @@ export const PICsEditorPanel: React.FC<Props> = ({ modeloId }) => {
     ops.forEach((r) => {
       const st = rowState[r.id];
       if (!st) return;
-      const isNew = r.id < 0;
+      const isNew = false;
       const changed: { pcr?: number | null; monto_usd?: number | null } = {};
       if (
         (st.pcr ?? "") !==
@@ -173,7 +166,7 @@ export const PICsEditorPanel: React.FC<Props> = ({ modeloId }) => {
       }
       if (Object.keys(changed).length === 0) return;
       mutation.mutate({
-        id: isNew ? undefined : r.id,
+        id: r.id,
         modelo_id: r.modelo_id,
         componente_id: r.componente_id,
         pcr: changed.pcr,
@@ -181,6 +174,33 @@ export const PICsEditorPanel: React.FC<Props> = ({ modeloId }) => {
         isNew,
       });
     });
+  };
+
+  // Formulario para agregar nuevo componente y valores
+  const [newCompId, setNewCompId] = useState<string>("");
+  const [newPcr, setNewPcr] = useState<string>("");
+  const [newMonto, setNewMonto] = useState<string>("");
+
+  const addNew = () => {
+    if (!newCompId) return;
+    const pcrVal = newPcr.trim() === "" ? null : Number(newPcr);
+    const montoVal = newMonto.trim() === "" ? null : Number(newMonto);
+    if (
+      (pcrVal !== null && isNaN(pcrVal)) ||
+      (montoVal !== null && isNaN(montoVal))
+    ) {
+      return;
+    }
+    mutation.mutate({
+      modelo_id: modeloId,
+      componente_id: Number(newCompId),
+      pcr: pcrVal,
+      monto_usd: montoVal,
+      isNew: true,
+    });
+    setNewCompId("");
+    setNewPcr("");
+    setNewMonto("");
   };
 
   return (
@@ -191,7 +211,8 @@ export const PICsEditorPanel: React.FC<Props> = ({ modeloId }) => {
           Cargando...
         </div>
       )}
-      <ScrollArea className="flex-1 pr-2">
+
+      <div className="flex-1 overflow-auto pr-2">
         <table className="w-full text-xs">
           <thead>
             <tr className="text-left border-b">
@@ -266,7 +287,69 @@ export const PICsEditorPanel: React.FC<Props> = ({ modeloId }) => {
             )}
           </tbody>
         </table>
-      </ScrollArea>
+
+        {/* Nuevo registro (abajo) */}
+        <div className="mt-3 grid grid-cols-12 gap-2 items-end">
+          <div className="col-span-6">
+            <label className="text-[10px] text-muted-foreground">
+              Componente
+            </label>
+            <Select value={newCompId} onValueChange={setNewCompId}>
+              <SelectTrigger>
+                <SelectValue
+                  placeholder={
+                    loadingComponentes
+                      ? "Cargando..."
+                      : "Seleccionar componente"
+                  }
+                />
+              </SelectTrigger>
+              <SelectContent className="bg-popover max-h-72">
+                {allComponentes
+                  .filter(
+                    (c) => !mergedRows.some((r) => r.componente_id === c.id)
+                  )
+                  .map((c) => (
+                    <SelectItem key={c.id} value={String(c.id)}>
+                      {c.nombre}
+                    </SelectItem>
+                  ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="col-span-3">
+            <label className="text-[10px] text-muted-foreground">PCR</label>
+            <Input
+              value={newPcr}
+              onChange={(e) => setNewPcr(e.target.value)}
+              placeholder="ej: 0.1234"
+            />
+          </div>
+          <div className="col-span-3">
+            <label className="text-[10px] text-muted-foreground">
+              Monto USD
+            </label>
+            <Input
+              value={newMonto}
+              onChange={(e) => setNewMonto(e.target.value)}
+              placeholder="ej: 1000"
+            />
+          </div>
+          <div className="col-span-12 flex justify-end">
+            <Button
+              size="sm"
+              onClick={addNew}
+              disabled={mutation.isPending || !newCompId}
+            >
+              {mutation.isPending && (
+                <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+              )}
+              Agregar componente
+            </Button>
+          </div>
+        </div>
+      </div>
+
       <div className="mt-3 flex items-center justify-between">
         <Button size="sm" onClick={batchSave} disabled={mutation.isPending}>
           {mutation.isPending && (

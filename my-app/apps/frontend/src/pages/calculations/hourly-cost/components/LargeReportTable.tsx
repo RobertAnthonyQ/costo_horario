@@ -214,7 +214,14 @@ export function LargeReportTable({ report }: LargeReportTableProps) {
   ]);
 
   // 2.2 - Ratios USD/hr (seccion2.ratiosUsdHr) - Con numeración estructurada
-  const seccion2Ratios = renderSection("2.2 - Ratios USD/hr", [
+  // Obtener los componentes dinámicos del primer escenario
+  const componentesDinamicos =
+    escenarios.length > 0
+      ? escenarios[0]?.seccion2?.ratiosUsdHr?.componentes || []
+      : [];
+
+  // Construir las filas de ratios con componentes dinámicos integrados
+  const ratiosRows = [
     {
       label: "2.2.1. Costo M.Prev - Lubricantes",
       get: (e) => e.seccion2?.ratiosUsdHr?.costoMPrevLubricantes,
@@ -247,39 +254,21 @@ export function LargeReportTable({ report }: LargeReportTableProps) {
       label: "Ppto PICs",
       get: (e) => e.seccion2?.ratiosUsdHr?.pptoPics,
     },
+    // Agregar componentes dinámicos aquí
+    ...componentesDinamicos.map((comp: any, index: number) => ({
+      label: `  → ${comp.componente_nombre || `Componente ${comp.componente_id}`}`,
+      get: (e) => {
+        const escComponentes = e.seccion2?.ratiosUsdHr?.componentes || [];
+        const escComp = escComponentes.find(
+          (c: any) => c.componente_id === comp.componente_id
+        );
+        return escComp?.costo_pic_calculado;
+      },
+    })),
     {
       label: "Incidencia (PIC/Valor Nuevo)",
       get: (e) => e.seccion2?.ratiosUsdHr?.incidenciaPicSobreValorNuevo,
     },
-    {
-      label: "Motor",
-      get: (e) => e.seccion2?.ratiosUsdHr?.motor,
-    },
-    {
-      label: "Transmisión",
-      get: (e) => e.seccion2?.ratiosUsdHr?.transmision,
-    },
-    {
-      label: "Convertidor",
-      get: (e) => e.seccion2?.ratiosUsdHr?.convertidor,
-    },
-    {
-      label: "Mandos Finales",
-      get: (e) => e.seccion2?.ratiosUsdHr?.mandosFinales,
-    },
-    {
-      label: "Diferenciales",
-      get: (e) => e.seccion2?.ratiosUsdHr?.diferenciales,
-    },
-    {
-      label: "Sistema Hidráulico",
-      get: (e) => e.seccion2?.ratiosUsdHr?.sistemaHidraulico,
-    },
-    {
-      label: "Sistema Eléctrico",
-      get: (e) => e.seccion2?.ratiosUsdHr?.sistemaElectrico,
-    },
-
     {
       label: "2.2.8. Costo Mantenimiento - Neumáticos",
       get: (e) => e.seccion2?.ratiosUsdHr?.costoMantenimientoNeumaticos,
@@ -293,7 +282,9 @@ export function LargeReportTable({ report }: LargeReportTableProps) {
       label: "2.2.10. Costo Mantenimiento - Elementos de desgaste (GETs)",
       get: (e) => e.seccion2?.ratiosUsdHr?.costoMantenimientoGets,
     },
-  ]);
+  ];
+
+  const seccion2Ratios = renderSection("2.2 - Ratios USD/hr", ratiosRows);
 
   // 3 - Costos fijos (seccion3.posesion)
   const seccion3Fijos = renderSection("3 - Costos horario fijos", [
@@ -438,7 +429,7 @@ export function LargeReportTable({ report }: LargeReportTableProps) {
     componentesMeta.length > 0 ? (
       <div className="mb-6">
         <div className="px-3 py-2 text-xs uppercase tracking-wide text-muted-foreground font-semibold bg-muted/20">
-          Componentes Meta
+          Componentes Meta (Historial)
         </div>
         <div className="overflow-x-auto">
           <table className="w-full border-collapse border rounded-md overflow-hidden">

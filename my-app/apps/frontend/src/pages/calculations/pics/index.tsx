@@ -57,6 +57,14 @@ const PICsPage: React.FC = () => {
   });
 
   const records = recordsResp?.data || [];
+  // Resumen total (para mostrar fuera del panel)
+  const { data: resumenResp } = useQuery({
+    queryKey: ["pics", "total-resumen-by-modelo", selectedModeloId],
+    queryFn: () =>
+      picsService.getTotalResumenByModelo(selectedModeloId as number),
+    enabled: !!selectedModeloId,
+  });
+  const resumenTotal = resumenResp?.data?.resumen_total ?? resumenResp?.data;
   const hasFilter = Boolean(selectedModeloId);
   const loadError =
     !isLoading && recordsResp && !recordsResp.success
@@ -169,6 +177,50 @@ const PICsPage: React.FC = () => {
             ) : (
               <div className="p-6 border rounded-md text-center text-sm text-muted-foreground h-[520px] flex items-center justify-center">
                 Selecciona una máquina para ver el historial de PICs.
+              </div>
+            )}
+
+            {/* Resumen Total */}
+            {selectedModeloId && resumenTotal && (
+              <div className="mt-4 p-4 bg-muted/30 rounded-md border">
+                <h3 className="text-sm font-semibold mb-2">Resumen Total</h3>
+                <div className="grid grid-cols-2 gap-2 text-sm">
+                  <div>
+                    <span className="text-muted-foreground">
+                      Valor Adquisición:
+                    </span>
+                    <div className="font-medium">
+                      ${resumenTotal.valor_adquisicion?.toLocaleString() || "0"}
+                    </div>
+                  </div>
+                  <div>
+                    <span className="text-muted-foreground">
+                      Total Aplicado:
+                    </span>
+                    <div className="font-medium">
+                      $
+                      {resumenTotal.total_monto_aplicado?.toLocaleString() ||
+                        "0"}
+                    </div>
+                  </div>
+                  <div className="col-span-2">
+                    <span className="text-muted-foreground">
+                      % Respecto Valor Adquisición:
+                    </span>
+                    <div className="font-bold text-primary">
+                      {resumenTotal.porcentaje_respecto_valor_adquisicion?.toFixed(
+                        2
+                      ) || "0.00"}
+                      %
+                    </div>
+                  </div>
+                  <div>
+                    <span className="text-muted-foreground">Componentes:</span>
+                    <div className="font-medium">
+                      {resumenTotal.cantidad_componentes || 0}
+                    </div>
+                  </div>
+                </div>
               </div>
             )}
           </div>

@@ -20,7 +20,11 @@ interface Props {
 }
 
 export const PICsTable: React.FC<Props> = ({ records, loading }) => {
-  const rows = useMemo(() => records ?? [], [records]);
+  const rows = useMemo(() => {
+    const recordsArray = records ?? [];
+    // Ordenar por componente_id para mantener consistencia con el panel de edición
+    return recordsArray.sort((a, b) => a.componente_id - b.componente_id);
+  }, [records]);
 
   return (
     <div className="border rounded-md overflow-auto">

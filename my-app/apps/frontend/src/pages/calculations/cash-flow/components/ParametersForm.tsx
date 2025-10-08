@@ -2,7 +2,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Eye, Info, Calculator, Save } from "lucide-react";
+import { Eye, Info, Calculator, Save, FileSpreadsheet } from "lucide-react";
 import { FlujoCajaVersion } from "../models/types";
 
 interface ParametersFormProps {
@@ -30,6 +30,7 @@ interface ParametersFormProps {
   onSave: () => void;
   onToggleHistory: () => void;
   onViewVersionDetails?: (version: FlujoCajaVersion) => void;
+  onViewAmortizacion?: () => void;
 }
 
 export function ParametersForm({
@@ -50,6 +51,7 @@ export function ParametersForm({
   onSave,
   onToggleHistory,
   onViewVersionDetails,
+  onViewAmortizacion,
 }: ParametersFormProps) {
   // Helper para manejar conversión de porcentajes sin problemas de precisión
   const handlePercentageChange = (value: string, field: string) => {
@@ -119,6 +121,17 @@ export function ParametersForm({
               Selecciona la máquina para la cual deseas realizar el análisis de
               flujo de caja
             </p>
+            {machineId && onViewAmortizacion && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={onViewAmortizacion}
+                className="mt-2 flex items-center gap-2"
+              >
+                <FileSpreadsheet className="h-4 w-4" />
+                Ver Tabla de Amortización
+              </Button>
+            )}
           </div>
         </div>
 

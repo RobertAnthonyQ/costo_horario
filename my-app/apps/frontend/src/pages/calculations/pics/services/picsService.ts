@@ -55,9 +55,18 @@ async function handleApiResponse<T>(
 
     let normalized: any = parsed;
     if (Array.isArray(parsed)) {
+      // Normalizamos arrays de registros PIC
       normalized = parsed.map((r: RawPICRecord) => normalizePICRecord(r));
     } else if (parsed && typeof parsed === "object") {
-      normalized = normalizePICRecord(parsed as RawPICRecord);
+      // Si se trata de un registro PIC individual (tiene campos clave), normalizar;
+      // de lo contrario, devolver tal cual para no romper respuestas de resumen.
+      const looksLikePICRecord =
+        Object.prototype.hasOwnProperty.call(parsed, "id") &&
+        Object.prototype.hasOwnProperty.call(parsed, "modelo_id") &&
+        Object.prototype.hasOwnProperty.call(parsed, "componente_id");
+      normalized = looksLikePICRecord
+        ? normalizePICRecord(parsed as RawPICRecord)
+        : parsed;
     }
 
     console.log("✅ Respuesta PICs exitosa", {
@@ -77,12 +86,106 @@ function netErr(e: any): ApiResponse<any> {
   return { success: false, error: "Error de conexión. Verifique su red." };
 }
 
+// Handler especializado para endpoints que devuelven listas de PICs
+async function handlePICArrayResponse(
+  response: Response
+): Promise<ApiResponse<PICRecord[]>> {
+  try {
+    const text = await response.text();
+    let parsed: any = null;
+    try {
+      parsed = text ? JSON.parse(text) : null;
+    } catch (err) {
+      console.warn("⚠️ No se pudo parsear JSON, se devuelve texto crudo");
+      parsed = text;
+    }
+
+    if (!response.ok) {
+      console.error("❌ Error API PICs (array)", {
+        status: response.status,
+        statusText: response.statusText,
+        body: parsed,
+      });
+      return {
+        success: false,
+        error:
+          (parsed && (parsed.message || parsed.error)) ||
+          (typeof parsed === "string" ? parsed : response.statusText),
+      };
+    }
+
+    // Algunas APIs devuelven { data: [...] }
+    let payload: any = parsed;
+    if (payload && typeof payload === "object" && Array.isArray(payload.data)) {
+      payload = payload.data;
+    }
+
+    const normalized: PICRecord[] = Array.isArray(payload)
+      ? payload.map((r: RawPICRecord) => normalizePICRecord(r))
+      : [];
+
+    console.log("✅ Respuesta PICs (array) exitosa", {
+      count: normalized.length,
+    });
+    return { success: true, data: normalized };
+  } catch (e) {
+    console.error("❌ Excepción procesando respuesta PICs (array)", e);
+    return {
+      success: false,
+      error: "Error al procesar la respuesta del servidor",
+    };
+  }
+}
+
+// Handler genérico para objetos JSON (sin normalizar a PICRecord)
+async function handleJsonObjectResponse<T = any>(
+  response: Response
+): Promise<ApiResponse<T>> {
+  try {
+    const text = await response.text();
+    let parsed: any = null;
+    try {
+      parsed = text ? JSON.parse(text) : null;
+    } catch (err) {
+      console.warn("⚠️ No se pudo parsear JSON, se devuelve texto crudo");
+      parsed = text;
+    }
+
+    if (!response.ok) {
+      console.error("❌ Error API JSON (obj)", {
+        status: response.status,
+        statusText: response.statusText,
+        body: parsed,
+      });
+      return {
+        success: false,
+        error:
+          (parsed && (parsed.message || parsed.error)) ||
+          (typeof parsed === "string" ? parsed : response.statusText),
+      };
+    }
+
+    // Si viene envuelto en { data: {...} }, desempaquetar.
+    const payload =
+      parsed && typeof parsed === "object" && "data" in parsed
+        ? parsed.data
+        : parsed;
+    return { success: true, data: payload as T };
+  } catch (e) {
+    console.error("❌ Excepción procesando respuesta JSON (obj)", e);
+    return {
+      success: false,
+      error: "Error al procesar la respuesta del servidor",
+    };
+  }
+}
+
 class PICsService {
   async listAll(): Promise<ApiResponse<PICRecord[]>> {
     try {
       console.log("📡 GET PICs listAll ->", ENDPOINT);
       const resp = await fetch(ENDPOINT);
-      return await handleApiResponse<PICRecord[]>(resp);
+      return await handlePICArrayResponse(resp);
     } catch (e) {
       return netErr(e);
     }
@@ -93,7 +196,7 @@ class PICsService {
       const url = `${ENDPOINT}/latest-by-modelo/${modeloId}`;
       console.log("📡 GET PICs latestByModelo ->", url);
       const resp = await fetch(url);
-      return await handleApiResponse<PICRecord[]>(resp);
+      return await handlePICArrayResponse(resp);
     } catch (e) {
       return netErr(e);
     }
@@ -104,7 +207,7 @@ class PICsService {
       const url = `${ENDPOINT}/by-modelo/${modeloId}`;
       console.log("📡 GET PICs byModelo ->", url);
       const resp = await fetch(url);
-      return await handleApiResponse<PICRecord[]>(resp);
+      return await handlePICArrayResponse(resp);
     } catch (e) {
       return netErr(e);
     }
@@ -115,7 +218,7 @@ class PICsService {
       const url = `${ENDPOINT}/by-componente/${componenteId}`;
       console.log("📡 GET PICs byComponente ->", url);
       const resp = await fetch(url);
-      return await handleApiResponse<PICRecord[]>(resp);
+      return await handlePICArrayResponse(resp);
     } catch (e) {
       return netErr(e);
     }
@@ -133,7 +236,7 @@ class PICsService {
       const url = `${ENDPOINT}/by-fecha-range?${params}`;
       console.log("📡 GET PICs byFechaRange ->", url);
       const resp = await fetch(url);
-      return await handleApiResponse<PICRecord[]>(resp);
+      return await handlePICArrayResponse(resp);
     } catch (e) {
       return netErr(e);
     }
@@ -184,6 +287,29 @@ class PICsService {
         body: JSON.stringify(body),
       });
       return await handleApiResponse<PICRecord>(resp);
+    } catch (e) {
+      return netErr(e);
+    }
+  }
+
+  async getTotalResumenByModelo(modeloId: number): Promise<ApiResponse<any>> {
+    try {
+      const url = `${ENDPOINT}/total-resumen-by-modelo/${modeloId}`;
+      console.log("📊 GET PICs getTotalResumenByModelo ->", url);
+      const resp = await fetch(url);
+      return await handleJsonObjectResponse<any>(resp);
+    } catch (e) {
+      return netErr(e);
+    }
+  }
+
+  async getResumenPorComponente(modeloId?: number): Promise<ApiResponse<any>> {
+    try {
+      const params = modeloId ? `?modeloId=${modeloId}` : "";
+      const url = `${ENDPOINT}/resumen-por-componente${params}`;
+      console.log("📊 GET PICs getResumenPorComponente ->", url);
+      const resp = await fetch(url);
+      return await handleJsonObjectResponse<any>(resp);
     } catch (e) {
       return netErr(e);
     }

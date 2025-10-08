@@ -1,18 +1,20 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Eye, Calendar, FileText } from "lucide-react";
+import { Eye, Calendar, FileText, FileSpreadsheet } from "lucide-react";
 import { FlujoCajaVersion } from "../models/types";
 
 interface HistorySectionProps {
   versions: FlujoCajaVersion[];
   versionsLoading: boolean;
   onViewDetails: (version: FlujoCajaVersion) => void;
+  onViewAmortizacion?: (version: FlujoCajaVersion) => void;
 }
 
 export function HistorySection({
   versions,
   versionsLoading,
   onViewDetails,
+  onViewAmortizacion,
 }: HistorySectionProps) {
   if (versionsLoading) {
     return (
@@ -72,15 +74,26 @@ export function HistorySection({
                   })}
                 </p>
               </div>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => onViewDetails(version)}
-                className="ml-4"
-              >
-                <Eye className="h-4 w-4 mr-2" />
-                Ver Detalles
-              </Button>
+              <div className="flex gap-2 ml-4">
+                {onViewAmortizacion && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => onViewAmortizacion(version)}
+                    title="Ver tabla de amortización"
+                  >
+                    <FileSpreadsheet className="h-4 w-4" />
+                  </Button>
+                )}
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => onViewDetails(version)}
+                >
+                  <Eye className="h-4 w-4 mr-2" />
+                  Ver Detalles
+                </Button>
+              </div>
             </div>
           ))}
         </div>

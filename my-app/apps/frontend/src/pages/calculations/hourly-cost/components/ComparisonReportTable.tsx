@@ -265,7 +265,36 @@ export function ComparisonReportTable({
   ]);
 
   // 2.2 - Ratios USD/hr comparativa
-  const seccion2Ratios = renderComparisonSection("2.2 - Ratios USD/hr", [
+  // Obtener componentes dinámicos de ambas máquinas
+  const componentesDinamicos1 =
+    escenarios1.length > 0
+      ? escenarios1[0]?.seccion2?.ratiosUsdHr?.componentes || []
+      : [];
+  const componentesDinamicos2 =
+    escenarios2.length > 0
+      ? escenarios2[0]?.seccion2?.ratiosUsdHr?.componentes || []
+      : [];
+
+  // Crear un mapa único de todos los componentes por ID
+  const allComponentsMap = new Map();
+  componentesDinamicos1.forEach((comp: any) => {
+    allComponentsMap.set(comp.componente_id, {
+      id: comp.componente_id,
+      nombre: comp.componente_nombre,
+    });
+  });
+  componentesDinamicos2.forEach((comp: any) => {
+    if (!allComponentsMap.has(comp.componente_id)) {
+      allComponentsMap.set(comp.componente_id, {
+        id: comp.componente_id,
+        nombre: comp.componente_nombre,
+      });
+    }
+  });
+  const allComponentes = Array.from(allComponentsMap.values());
+
+  // Construir las filas de ratios con componentes dinámicos integrados
+  const ratiosComparisonRows = [
     {
       label: "2.2.1. Costo M.Prev - Lubricantes",
       get: (e) => e.seccion2?.ratiosUsdHr?.costoMPrevLubricantes,
@@ -298,37 +327,20 @@ export function ComparisonReportTable({
       label: "Ppto PICs",
       get: (e) => e.seccion2?.ratiosUsdHr?.pptoPics,
     },
+    // Agregar componentes dinámicos aquí
+    ...allComponentes.map((comp) => ({
+      label: `  → ${comp.nombre || `Componente ${comp.id}`}`,
+      get: (e) => {
+        const escComponentes = e.seccion2?.ratiosUsdHr?.componentes || [];
+        const escComp = escComponentes.find(
+          (c: any) => c.componente_id === comp.id
+        );
+        return escComp?.costo_pic_calculado;
+      },
+    })),
     {
       label: "Incidencia (PIC/Valor Nuevo)",
       get: (e) => e.seccion2?.ratiosUsdHr?.incidenciaPicSobreValorNuevo,
-    },
-    {
-      label: "Motor",
-      get: (e) => e.seccion2?.ratiosUsdHr?.motor,
-    },
-    {
-      label: "Transmisión",
-      get: (e) => e.seccion2?.ratiosUsdHr?.transmision,
-    },
-    {
-      label: "Convertidor",
-      get: (e) => e.seccion2?.ratiosUsdHr?.convertidor,
-    },
-    {
-      label: "Mandos Finales",
-      get: (e) => e.seccion2?.ratiosUsdHr?.mandosFinales,
-    },
-    {
-      label: "Diferenciales",
-      get: (e) => e.seccion2?.ratiosUsdHr?.diferenciales,
-    },
-    {
-      label: "Sistema Hidráulico",
-      get: (e) => e.seccion2?.ratiosUsdHr?.sistemaHidraulico,
-    },
-    {
-      label: "Sistema Eléctrico",
-      get: (e) => e.seccion2?.ratiosUsdHr?.sistemaElectrico,
     },
     {
       label: "2.2.8. Costo Mantenimiento - Neumáticos",
@@ -343,7 +355,12 @@ export function ComparisonReportTable({
       label: "2.2.10. Costo Mantenimiento - Elementos de desgaste (GETs)",
       get: (e) => e.seccion2?.ratiosUsdHr?.costoMantenimientoGets,
     },
-  ]);
+  ];
+
+  const seccion2Ratios = renderComparisonSection(
+    "2.2 - Ratios USD/hr",
+    ratiosComparisonRows
+  );
 
   // 3 - Costos fijos comparativos
   const seccion3Fijos = renderComparisonSection("3 - Costos horario fijos", [

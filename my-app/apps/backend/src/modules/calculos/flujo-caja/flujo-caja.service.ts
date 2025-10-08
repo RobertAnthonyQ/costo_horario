@@ -254,12 +254,16 @@ export class FlujoCajaService {
           escenario.horasUsoAnual || horasMinimas * mesesAlAnio,
         );
 
-        // Extraer seguro TREC de cada escenario
+        // Extraer seguro TREC de seccion3 y valor comercial real de seccion2
         const seccion3Escenario = escenario.seccion3?.posesion || {};
+        const seccion2Escenario = escenario.seccion2?.descripcion || {};
         const seguroTrecEscenario = Number(seccion3Escenario.seguroTrec || 0);
+        const valorComercialRealEscenario = Number(
+          seccion2Escenario.valorComercialReal || 0,
+        );
 
         console.log(
-          `[FLUJO-CAJA] Escenario ${index + 1}: Hmin=${horasMinimas}, Grado=${gradoOperatividad}, Factor=${factorMercado}, HorasAnual=${horasUsoAnual}, SeguroTREC=${seguroTrecEscenario}`,
+          `[FLUJO-CAJA] Escenario ${index + 1}: Hmin=${horasMinimas}, Grado=${gradoOperatividad}, Factor=${factorMercado}, HorasAnual=${horasUsoAnual}, SeguroTREC=${seguroTrecEscenario}, ValorComercialReal=${valorComercialRealEscenario}`,
         );
 
         return {
@@ -268,6 +272,7 @@ export class FlujoCajaService {
           factorMercado,
           horasUsoAnual,
           seguroTrec: seguroTrecEscenario,
+          valorComercialReal: valorComercialRealEscenario,
         };
       },
     );
@@ -465,10 +470,14 @@ export class FlujoCajaService {
       (escenario) => escenario.horasMinimas === horasOperativasMes,
     );
 
-    // Si encuentra el escenario, usar su seguroTrec, si no, usar el del primer escenario como fallback
+    // Si encuentra el escenario, usar su seguroTrec y valorComercialReal, si no, usar el del primer escenario como fallback
     const seguroTrecSeleccionado = escenarioSeleccionado
       ? escenarioSeleccionado.seguroTrec
       : datosPrecargados.primaSeguroTrec;
+
+    const valorComercialRealSeleccionado = escenarioSeleccionado
+      ? (escenarioSeleccionado as any).valorComercialReal || 0
+      : (datosPrecargados.escenariosHoras[0] as any)?.valorComercialReal || 0;
 
     // Buscar el totalPosesionMantenimiento del escenario seleccionado
     // Necesitamos extraer este valor del escenario específico, similar al seguroTrec
@@ -501,6 +510,9 @@ export class FlujoCajaService {
 
     console.log(
       `[FLUJO-CAJA] Horas operativas mes: ${horasOperativasMes}, Escenario encontrado: ${escenarioSeleccionado ? 'Sí' : 'No'}, Seguro TREC seleccionado: ${seguroTrecSeleccionado}`,
+    );
+    console.log(
+      `[FLUJO-CAJA] Valor Comercial Real seleccionado: ${valorComercialRealSeleccionado}`,
     );
     console.log(
       `[FLUJO-CAJA] Total Posesión+Mantenimiento seleccionado: ${totalPosesionMantenimientoSeleccionado}`,
@@ -549,6 +561,16 @@ export class FlujoCajaService {
       console.log('[FLUJO-CAJA] =============================================');
     }
 
+    // Función auxiliar para calcular meses del año (último año proporcional)
+    const calcularMesesDelAnio = (anioActual: number): number => {
+      const esUltimoAnio = anioActual === aniosParaEscenarios;
+      const aniosValidos = aniosOperacionEstimados ?? 0;
+      const parteDecimal = aniosValidos - Math.floor(aniosValidos);
+      return esUltimoAnio && parteDecimal > 0
+        ? parteDecimal * datosPrecargados.mesesAlAnio
+        : datosPrecargados.mesesAlAnio;
+    };
+
     const resultadoConCalculo = {
       ...response,
       estado: 'calculado',
@@ -590,6 +612,13 @@ export class FlujoCajaService {
             (_, index) => {
               const anioActual = index + 1; // Empezar desde año 1
 
+              // Calcular meses del año usando la función auxiliar (último año proporcional)
+              const mesesDelAnio = calcularMesesDelAnio(anioActual);
+
+              console.log(
+                `[FLUJO-CAJA] Año ${anioActual}: Meses=${mesesDelAnio.toFixed(2)}`,
+              );
+
               // Obtener datos de amortización para este año si existe
               const amortizacionAnio =
                 tablaAmortizacionAnual &&
@@ -599,14 +628,12 @@ export class FlujoCajaService {
                   : null;
 
               const ingresosTotales =
-                horasOperativasMes *
-                datosPrecargados.mesesAlAnio *
-                tarifainternaporhora;
+                horasOperativasMes * mesesDelAnio * tarifainternaporhora;
 
               const egresosTotales =
                 -1 *
                 horasOperativasMes *
-                datosPrecargados.mesesAlAnio *
+                mesesDelAnio *
                 (gastodemantenimiento +
                   gastosgenerales +
                   seguroTrecSeleccionado);
@@ -616,12 +643,27 @@ export class FlujoCajaService {
                 ? -amortizacionAnio.interesAnual
                 : 0;
 
+              // Calcular depreciación proporcional para el último año
+              const esUltimoAnio = anioActual === aniosParaEscenarios;
+              const aniosValidos = aniosOperacionEstimados ?? 0;
+              const parteDecimal = aniosValidos - Math.floor(aniosValidos);
+              const factorProporcional =
+                esUltimoAnio && parteDecimal > 0
+                  ? mesesDelAnio / datosPrecargados.mesesAlAnio // Factor proporcional: 6.72/12 = 0.56
+                  : 1;
+              const depreciacionAnualAjustada =
+                depreciacionAnual * factorProporcional;
+
+              console.log(
+                `[FLUJO-CAJA] Año ${anioActual}: FactorProporcional=${factorProporcional.toFixed(4)}, DepreciaciónAjustada=$${Math.abs(depreciacionAnualAjustada).toLocaleString()}`,
+              );
+
               // Calcular base imponible y impuestos
               const baseImponible =
                 ingresosTotales +
                 egresosTotales +
                 interesAmortizacion +
-                depreciacionAnual;
+                depreciacionAnualAjustada;
               const impuestos =
                 baseImponible > 0 ? -1 * (baseImponible * tasaImpuestos) : 0; // Negativo porque es egreso
 
@@ -675,57 +717,52 @@ export class FlujoCajaService {
               const baseEscenario = {
                 anio: anioActual,
                 nombre: `Año ${anioActual}`,
-                horasOperativasAnio:
-                  horasOperativasMes * datosPrecargados.mesesAlAnio,
+                mesesDelAnio, // Agregar meses calculados al resultado
+                horasOperativasMes, // Horas operativas por mes
+                horasOperativasAnio: horasOperativasMes * mesesDelAnio,
                 ingresosTotales,
                 tarifainternaporhoraBase: tarifainternaporhora,
                 egresosTotales,
                 gastospormantenimiento:
-                  -1 *
-                  gastodemantenimiento *
-                  horasOperativasMes *
-                  datosPrecargados.mesesAlAnio,
+                  -1 * gastodemantenimiento * horasOperativasMes * mesesDelAnio,
                 preventivo:
                   -1 *
                   datosPrecargados.mantenimiento.preventivo *
                   horasOperativasMes *
-                  datosPrecargados.mesesAlAnio,
+                  mesesDelAnio,
                 correctivo:
                   -1 *
                   datosPrecargados.mantenimiento.correctivo *
                   horasOperativasMes *
-                  datosPrecargados.mesesAlAnio,
+                  mesesDelAnio,
                 neumaticos:
                   -1 *
                   datosPrecargados.mantenimiento.neumaticos *
                   horasOperativasMes *
-                  datosPrecargados.mesesAlAnio,
+                  mesesDelAnio,
                 elementosDesgaste:
                   -1 *
                   datosPrecargados.mantenimiento.elementosDesgaste *
                   horasOperativasMes *
-                  datosPrecargados.mesesAlAnio,
+                  mesesDelAnio,
                 soldadura:
                   -1 *
                   datosPrecargados.mantenimiento.soldadura *
                   horasOperativasMes *
-                  datosPrecargados.mesesAlAnio,
+                  mesesDelAnio,
                 manoDeObraSupervision:
                   -1 *
                   datosPrecargados.mantenimiento.manoDeObraSupervision *
                   horasOperativasMes *
-                  datosPrecargados.mesesAlAnio,
+                  mesesDelAnio,
                 gastosgenerales:
-                  -1 *
-                  gastosgenerales *
-                  horasOperativasMes *
-                  datosPrecargados.mesesAlAnio,
+                  -1 * gastosgenerales * horasOperativasMes * mesesDelAnio,
                 seguro:
                   -1 *
                   seguroTrecSeleccionado *
                   horasOperativasMes *
-                  datosPrecargados.mesesAlAnio,
-                depreciacion: depreciacionAnual,
+                  mesesDelAnio,
+                depreciacion: depreciacionAnualAjustada, // Depreciación ajustada (proporcional en último año)
                 impuestos, // Impuestos calculados (29.5% de la base imponible)
                 flujo_de_caja_operacion, // Flujo de caja de operación (ingresos + egresos + impuestos)
               };
@@ -753,25 +790,32 @@ export class FlujoCajaService {
           // Resumen del flujo de caja de operación (sumas horizontales)
           resumenFlujoCajaOperacion: {
             vidaUtilHoras: vidaUtilHoras,
-            horasOperativasMes: vidaUtilHoras,
+            horasOperativasMes: horasOperativasMes, // Horas operativas mensuales (parámetro)
+            totalHorasOperativasAnio: Array.from(
+              { length: aniosParaEscenarios },
+              (_, index) => {
+                const anioActual = index + 1;
+                const mesesDelAnio = calcularMesesDelAnio(anioActual);
+                return horasOperativasMes * mesesDelAnio;
+              },
+            ).reduce((sum, valor) => sum + valor, 0),
             totalIngresosTotales: Array.from(
               { length: aniosParaEscenarios },
               (_, index) => {
                 const anioActual = index + 1;
-                return (
-                  horasOperativasMes *
-                  datosPrecargados.mesesAlAnio *
-                  tarifainternaporhora
-                );
+                const mesesDelAnio = calcularMesesDelAnio(anioActual);
+                return horasOperativasMes * mesesDelAnio * tarifainternaporhora;
               },
             ).reduce((sum, valor) => sum + valor, 0),
             totalEgresosTotales: Array.from(
               { length: aniosParaEscenarios },
               (_, index) => {
+                const anioActual = index + 1;
+                const mesesDelAnio = calcularMesesDelAnio(anioActual);
                 return (
                   -1 *
                   horasOperativasMes *
-                  datosPrecargados.mesesAlAnio *
+                  mesesDelAnio *
                   (gastodemantenimiento +
                     gastosgenerales +
                     seguroTrecSeleccionado)
@@ -781,99 +825,109 @@ export class FlujoCajaService {
             totalGastosMantenimiento: Array.from(
               { length: aniosParaEscenarios },
               (_, index) => {
+                const anioActual = index + 1;
+                const mesesDelAnio = calcularMesesDelAnio(anioActual);
                 return (
-                  -1 *
-                  gastodemantenimiento *
-                  horasOperativasMes *
-                  datosPrecargados.mesesAlAnio
+                  -1 * gastodemantenimiento * horasOperativasMes * mesesDelAnio
                 );
               },
             ).reduce((sum, valor) => sum + valor, 0),
             totalPreventivo: Array.from(
               { length: aniosParaEscenarios },
               (_, index) => {
+                const anioActual = index + 1;
+                const mesesDelAnio = calcularMesesDelAnio(anioActual);
                 return (
                   -1 *
                   datosPrecargados.mantenimiento.preventivo *
                   horasOperativasMes *
-                  datosPrecargados.mesesAlAnio
+                  mesesDelAnio
                 );
               },
             ).reduce((sum, valor) => sum + valor, 0),
             totalCorrectivo: Array.from(
               { length: aniosParaEscenarios },
               (_, index) => {
+                const anioActual = index + 1;
+                const mesesDelAnio = calcularMesesDelAnio(anioActual);
                 return (
                   -1 *
                   datosPrecargados.mantenimiento.correctivo *
                   horasOperativasMes *
-                  datosPrecargados.mesesAlAnio
+                  mesesDelAnio
                 );
               },
             ).reduce((sum, valor) => sum + valor, 0),
             totalNeumaticos: Array.from(
               { length: aniosParaEscenarios },
               (_, index) => {
+                const anioActual = index + 1;
+                const mesesDelAnio = calcularMesesDelAnio(anioActual);
                 return (
                   -1 *
                   datosPrecargados.mantenimiento.neumaticos *
                   horasOperativasMes *
-                  datosPrecargados.mesesAlAnio
+                  mesesDelAnio
                 );
               },
             ).reduce((sum, valor) => sum + valor, 0),
             totalElementosDesgaste: Array.from(
               { length: aniosParaEscenarios },
               (_, index) => {
+                const anioActual = index + 1;
+                const mesesDelAnio = calcularMesesDelAnio(anioActual);
                 return (
                   -1 *
                   datosPrecargados.mantenimiento.elementosDesgaste *
                   horasOperativasMes *
-                  datosPrecargados.mesesAlAnio
+                  mesesDelAnio
                 );
               },
             ).reduce((sum, valor) => sum + valor, 0),
             totalSoldadura: Array.from(
               { length: aniosParaEscenarios },
               (_, index) => {
+                const anioActual = index + 1;
+                const mesesDelAnio = calcularMesesDelAnio(anioActual);
                 return (
                   -1 *
                   datosPrecargados.mantenimiento.soldadura *
                   horasOperativasMes *
-                  datosPrecargados.mesesAlAnio
+                  mesesDelAnio
                 );
               },
             ).reduce((sum, valor) => sum + valor, 0),
             totalManoObraSupervision: Array.from(
               { length: aniosParaEscenarios },
               (_, index) => {
+                const anioActual = index + 1;
+                const mesesDelAnio = calcularMesesDelAnio(anioActual);
                 return (
                   -1 *
                   datosPrecargados.mantenimiento.manoDeObraSupervision *
                   horasOperativasMes *
-                  datosPrecargados.mesesAlAnio
+                  mesesDelAnio
                 );
               },
             ).reduce((sum, valor) => sum + valor, 0),
             totalGastosGenerales: Array.from(
               { length: aniosParaEscenarios },
               (_, index) => {
-                return (
-                  -1 *
-                  gastosgenerales *
-                  horasOperativasMes *
-                  datosPrecargados.mesesAlAnio
-                );
+                const anioActual = index + 1;
+                const mesesDelAnio = calcularMesesDelAnio(anioActual);
+                return -1 * gastosgenerales * horasOperativasMes * mesesDelAnio;
               },
             ).reduce((sum, valor) => sum + valor, 0),
             totalSeguro: Array.from(
               { length: aniosParaEscenarios },
               (_, index) => {
+                const anioActual = index + 1;
+                const mesesDelAnio = calcularMesesDelAnio(anioActual);
                 return (
                   -1 *
                   seguroTrecSeleccionado *
                   horasOperativasMes *
-                  datosPrecargados.mesesAlAnio
+                  mesesDelAnio
                 );
               },
             ).reduce((sum, valor) => sum + valor, 0),
@@ -881,14 +935,14 @@ export class FlujoCajaService {
               { length: aniosParaEscenarios },
               (_, index) => {
                 // Calcular impuestos para cada año
+                const anioActual = index + 1;
+                const mesesDelAnio = calcularMesesDelAnio(anioActual);
                 const ingresosTotales =
-                  horasOperativasMes *
-                  datosPrecargados.mesesAlAnio *
-                  tarifainternaporhora;
+                  horasOperativasMes * mesesDelAnio * tarifainternaporhora;
                 const egresosTotales =
                   -1 *
                   horasOperativasMes *
-                  datosPrecargados.mesesAlAnio *
+                  mesesDelAnio *
                   (gastodemantenimiento +
                     gastosgenerales +
                     seguroTrecSeleccionado);
@@ -904,11 +958,22 @@ export class FlujoCajaService {
                   ? -amortizacionAnio.interesAnual
                   : 0;
 
+                // Calcular depreciación proporcional para el último año
+                const esUltimoAnio = anioActual === aniosParaEscenarios;
+                const aniosValidos = aniosOperacionEstimados ?? 0;
+                const parteDecimal = aniosValidos - Math.floor(aniosValidos);
+                const factorProporcional =
+                  esUltimoAnio && parteDecimal > 0
+                    ? mesesDelAnio / datosPrecargados.mesesAlAnio
+                    : 1;
+                const depreciacionAnualAjustada =
+                  depreciacionAnual * factorProporcional;
+
                 const baseImponible =
                   ingresosTotales +
                   egresosTotales +
                   interesAmortizacion +
-                  depreciacionAnual;
+                  depreciacionAnualAjustada;
                 return baseImponible > 0
                   ? -1 * (baseImponible * tasaImpuestos)
                   : 0;
@@ -918,14 +983,14 @@ export class FlujoCajaService {
               { length: aniosParaEscenarios },
               (_, index) => {
                 // Calcular flujo de operación para cada año
+                const anioActual = index + 1;
+                const mesesDelAnio = calcularMesesDelAnio(anioActual);
                 const ingresosTotales =
-                  horasOperativasMes *
-                  datosPrecargados.mesesAlAnio *
-                  tarifainternaporhora;
+                  horasOperativasMes * mesesDelAnio * tarifainternaporhora;
                 const egresosTotales =
                   -1 *
                   horasOperativasMes *
-                  datosPrecargados.mesesAlAnio *
+                  mesesDelAnio *
                   (gastodemantenimiento +
                     gastosgenerales +
                     seguroTrecSeleccionado);
@@ -941,11 +1006,22 @@ export class FlujoCajaService {
                   ? -amortizacionAnio.interesAnual
                   : 0;
 
+                // Calcular depreciación proporcional para el último año
+                const esUltimoAnio = anioActual === aniosParaEscenarios;
+                const aniosValidos = aniosOperacionEstimados ?? 0;
+                const parteDecimal = aniosValidos - Math.floor(aniosValidos);
+                const factorProporcional =
+                  esUltimoAnio && parteDecimal > 0
+                    ? mesesDelAnio / datosPrecargados.mesesAlAnio
+                    : 1;
+                const depreciacionAnualAjustada =
+                  depreciacionAnual * factorProporcional;
+
                 const baseImponible =
                   ingresosTotales +
                   egresosTotales +
                   interesAmortizacion +
-                  depreciacionAnual;
+                  depreciacionAnualAjustada;
                 const impuestos =
                   baseImponible > 0 ? -1 * (baseImponible * tasaImpuestos) : 0;
 
@@ -961,6 +1037,7 @@ export class FlujoCajaService {
             aniosOperacionEstimados || 5, // Usar 5 años por defecto si es null
             aniosParaEscenarios,
             tablaAmortizacionAnual, // Pasar tabla de amortización para capital anual
+            valorComercialRealSeleccionado, // Valor comercial real del escenario seleccionado
           ),
 
           // Generar flujo de caja de financiamiento
@@ -985,6 +1062,7 @@ export class FlujoCajaService {
             valorResidual,
             datosPrecargados.valorAdquisicion,
             response.parametros.tasaDescuentoEmpresa, // Tasa de descuento de la empresa
+            valorComercialRealSeleccionado, // Valor comercial real del escenario seleccionado
           ),
 
           // ESTADO DE RESULTADOS
@@ -1001,6 +1079,7 @@ export class FlujoCajaService {
             seguroTrecSeleccionado,
             tasaImpuestos,
             tablaAmortizacionAnual,
+            valorComercialRealSeleccionado, // Valor comercial real del escenario seleccionado
           ),
         },
       },
@@ -1017,7 +1096,10 @@ export class FlujoCajaService {
       `[FLUJO-CAJA] Vida útil (horas): ${resumen.vidaUtilHoras.toLocaleString()}`,
     );
     console.log(
-      `[FLUJO-CAJA] Horas operativas/mes: ${resumen.horasOperativasMes.toLocaleString()}`,
+      `[FLUJO-CAJA] Horas operativas/mes (parámetro): ${resumen.horasOperativasMes.toLocaleString()}`,
+    );
+    console.log(
+      `[FLUJO-CAJA] TOTAL horas operativas año (suma horizontal): ${resumen.totalHorasOperativasAnio.toLocaleString()}`,
     );
     console.log(
       `[FLUJO-CAJA] TOTAL Ingresos: $${resumen.totalIngresosTotales.toLocaleString()}`,
@@ -1481,12 +1563,16 @@ export class FlujoCajaService {
           const horasUsoAnual =
             escenario.horasUsoAnual || horasMinimas * mesesAlAnio;
 
-          // Extraer seguro TREC de cada escenario
+          // Extraer seguro TREC de seccion3 y valor comercial real de seccion2
           const seccion3Escenario = escenario.seccion3?.posesion || {};
+          const seccion2Escenario = escenario.seccion2?.descripcion || {};
           const seguroTrecEscenario = Number(seccion3Escenario.seguroTrec || 0);
+          const valorComercialRealEscenario = Number(
+            seccion2Escenario.valorComercialReal || 0,
+          );
 
           console.log(
-            `[FLUJO-CAJA] Escenario ${index + 1}: Hmin=${horasMinimas}, Grado=${gradoOperatividad}, Factor=${factorMercado}, HorasAnual=${horasUsoAnual}, SeguroTREC=${seguroTrecEscenario}`,
+            `[FLUJO-CAJA] Escenario ${index + 1}: Hmin=${horasMinimas}, Grado=${gradoOperatividad}, Factor=${factorMercado}, HorasAnual=${horasUsoAnual}, SeguroTREC=${seguroTrecEscenario}, ValorComercialReal=${valorComercialRealEscenario}`,
           );
 
           return {
@@ -1496,6 +1582,7 @@ export class FlujoCajaService {
             factorMercado,
             horasUsoAnual,
             seguroTrec: seguroTrecEscenario,
+            valorComercialReal: valorComercialRealEscenario,
             mesesAlAnio,
           };
         },
@@ -1539,6 +1626,7 @@ export class FlujoCajaService {
    * @param aniosOperacionEstimados - Años de operación estimados (puede tener decimales)
    * @param aniosParaEscenarios - Años enteros para los escenarios
    * @param tablaAmortizacionAnual - Tabla de amortización para obtener capital anual
+   * @param valorComercialReal - Valor comercial real del escenario seleccionado (usado para venta)
    */
   private generarFlujoCajaInversion(
     valorAdquisicion: number,
@@ -1546,6 +1634,7 @@ export class FlujoCajaService {
     aniosOperacionEstimados: number,
     aniosParaEscenarios: number,
     tablaAmortizacionAnual: any,
+    valorComercialReal: number = 0,
   ) {
     console.log(
       `[FLUJO-CAJA] ========== GENERANDO FLUJO CAJA INVERSIÓN ==========`,
@@ -1557,42 +1646,38 @@ export class FlujoCajaService {
       `[FLUJO-CAJA] Valor residual: $${valorResidual.toLocaleString()}`,
     );
     console.log(
+      `[FLUJO-CAJA] Valor comercial real (usado para venta): $${valorComercialReal.toLocaleString()}`,
+    );
+    console.log(
       `[FLUJO-CAJA] Años operación estimados: ${aniosOperacionEstimados}`,
     );
     console.log(`[FLUJO-CAJA] Años para escenarios: ${aniosParaEscenarios}`);
 
-    // Determinar dónde colocar el valor residual según ejemplos dados:
-    // 3.6 → 5, 5.4 → 5, 5.0 → 6, 4.6 → 6, 4.3 → 5
+    // Determinar dónde colocar el valor residual basado en la parte decimal:
+    // Si decimal < 0.5 → parteEntera + 1
+    // Si decimal >= 0.5 → parteEntera + 2
+    // Ejemplos: 3.03→4, 3.5→5, 4.3→5, 4.5→6, 4.6→6, 5.0→6
 
-    const esEntero = Number.isInteger(aniosOperacionEstimados);
+    const parteEntera = Math.floor(aniosOperacionEstimados);
+    const parteDecimal = aniosOperacionEstimados - parteEntera;
+
     let anioValorResidual;
-
-    if (esEntero) {
-      // Para años enteros: valor residual va en el año siguiente (+1)
-      // 5.0 → 6
-      anioValorResidual = aniosOperacionEstimados + 1;
+    if (parteDecimal < 0.5) {
+      // Decimal menor a 0.5: sumar 1 año
+      anioValorResidual = parteEntera + 1;
     } else {
-      // Para años decimales: lógica basada en los ejemplos
-      if (aniosOperacionEstimados <= 4.0) {
-        // 3.6 → 5, 4.3 → 5
-        anioValorResidual = 5;
-      } else if (
-        aniosOperacionEstimados > 4.0 &&
-        aniosOperacionEstimados < 5.0
-      ) {
-        // 4.6 → 6
-        anioValorResidual = 6;
-      } else if (aniosOperacionEstimados >= 5.0) {
-        // 5.4 → 5
-        anioValorResidual = 5;
-      }
+      // Decimal mayor o igual a 0.5: sumar 2 años
+      anioValorResidual = parteEntera + 2;
     }
 
     // Verificar si necesitamos crear un año adicional más allá de los escenarios calculados
     const debeCrearAnioAdicional = anioValorResidual > aniosParaEscenarios;
 
     console.log(
-      `[FLUJO-CAJA] Años estimados: ${aniosOperacionEstimados} (${esEntero ? 'entero' : 'decimal'})`,
+      `[FLUJO-CAJA] Años estimados: ${aniosOperacionEstimados} → ParteEntera=${parteEntera}, Decimal=${parteDecimal.toFixed(2)}`,
+    );
+    console.log(
+      `[FLUJO-CAJA] Criterio: ${parteDecimal < 0.5 ? `${parteDecimal.toFixed(2)} < 0.5 → ${parteEntera}+1` : `${parteDecimal.toFixed(2)} ≥ 0.5 → ${parteEntera}+2`}`,
     );
     console.log(
       `[FLUJO-CAJA] Año calculado para valor residual: ${anioValorResidual}`,
@@ -1633,10 +1718,10 @@ export class FlujoCajaService {
             }
           }
 
-          // Venta solo en año del valor residual
-          const venta = esAnioValorResidual ? valorResidual : 0;
+          // Venta solo en año del valor residual (usando valorComercialReal del escenario)
+          const venta = esAnioValorResidual ? valorComercialReal : 0;
 
-          // CAPEX = capital anual de amortización + venta (si hay valor residual)
+          // CAPEX = capital anual de amortización + venta (si hay valor comercial real)
           const capex = capitalAnualAmortizacion + venta;
 
           // Compra = igual al capital de amortización (NO incluye venta)
@@ -1660,9 +1745,10 @@ export class FlujoCajaService {
       resumen: {
         inversionTotal: -valorAdquisicion,
         valorResidualRecuperado: valorResidual,
-        flujoNetoInversion: -valorAdquisicion + valorResidual,
+        valorComercialRealRecuperado: valorComercialReal,
+        flujoNetoInversion: -valorAdquisicion + valorComercialReal,
         anioRecuperacionValorResidual: anioValorResidual,
-        criterioUbicacion: `Valor residual en año ${anioValorResidual} (${aniosOperacionEstimados} años estimados)`,
+        criterioUbicacion: `Valor comercial real en año ${anioValorResidual} (Años estimados: ${aniosOperacionEstimados} → Parte entera: ${parteEntera}, Decimal: ${parteDecimal.toFixed(2)} ${parteDecimal < 0.5 ? '< 0.5 → +1 año' : '≥ 0.5 → +2 años'})`,
         // Calcular totales de capex
         capexTotal: (() => {
           let totalCapex = 0;
@@ -1673,8 +1759,8 @@ export class FlujoCajaService {
               0,
             );
           }
-          // Sumar valor residual (positivo)
-          totalCapex += valorResidual;
+          // Sumar valor comercial real (positivo)
+          totalCapex += valorComercialReal;
           return totalCapex;
         })(),
       },
@@ -1817,6 +1903,7 @@ export class FlujoCajaService {
     valorResidual: number,
     valorAdquisicion: number,
     tasaDescuentoEmpresa: number,
+    valorComercialReal: number = 0,
   ) {
     console.log(
       `[FLUJO-CAJA] ========== GENERANDO REPORTE FINAL CONSOLIDADO ==========`,
@@ -1833,21 +1920,30 @@ export class FlujoCajaService {
     console.log(`[FLUJO-CAJA] Año valor residual: ${anioValorResidual}`);
     console.log(`[FLUJO-CAJA] Años máximos para reporte: ${aniosMaximos}`);
 
+    // Función auxiliar para calcular meses del año (último año proporcional)
+    const calcularMesesDelAnio = (anioActual: number): number => {
+      const esUltimoAnio = anioActual === aniosParaEscenarios;
+      const aniosValidos = aniosOperacionEstimados ?? 0;
+      const parteDecimal = aniosValidos - Math.floor(aniosValidos);
+      return esUltimoAnio && parteDecimal > 0
+        ? parteDecimal * datosPrecargados.mesesAlAnio
+        : datosPrecargados.mesesAlAnio;
+    };
+
     // Generar flujos por año
-    const aniosReporte = Array.from({ length: aniosMaximos }, (_, index) => {
+    const aniosReporte = Array.from({ length:   aniosMaximos }, (_, index) => {
       const anioActual = index + 1;
 
       // FLUJO DE CAJA DE OPERACIÓN
       let flujoOperacion = 0;
       if (anioActual <= aniosParaEscenarios) {
+        const mesesDelAnio = calcularMesesDelAnio(anioActual);
         const ingresosTotales =
-          horasOperativasMes *
-          datosPrecargados.mesesAlAnio *
-          tarifainternaporhora;
+          horasOperativasMes * mesesDelAnio * tarifainternaporhora;
         const egresosTotales =
           -1 *
           horasOperativasMes *
-          datosPrecargados.mesesAlAnio *
+          mesesDelAnio *
           (gastodemantenimiento + gastosgenerales + seguroTrecSeleccionado);
 
         // Obtener interés de amortización para este año
@@ -1861,11 +1957,22 @@ export class FlujoCajaService {
           ? -amortizacionAnio.interesAnual
           : 0;
 
+        // Calcular depreciación proporcional para el último año
+        const esUltimoAnio = anioActual === aniosParaEscenarios;
+        const aniosValidos = aniosOperacionEstimados ?? 0;
+        const parteDecimal = aniosValidos - Math.floor(aniosValidos);
+        const factorProporcional =
+          esUltimoAnio && parteDecimal > 0
+            ? mesesDelAnio / datosPrecargados.mesesAlAnio
+            : 1;
+        const depreciacionAnualAjustada =
+          depreciacionAnual * factorProporcional;
+
         const baseImponible =
           ingresosTotales +
           egresosTotales +
           interesAmortizacion +
-          depreciacionAnual;
+          depreciacionAnualAjustada;
         const impuestos =
           baseImponible > 0 ? -1 * (baseImponible * tasaImpuestos) : 0;
 
@@ -1889,9 +1996,9 @@ export class FlujoCajaService {
         flujoInversion = capitalAnualAmortizacion;
       }
 
-      // Agregar valor residual si corresponde a este año
+      // Agregar valor comercial real si corresponde a este año
       if (anioActual === anioValorResidual) {
-        flujoInversion += valorResidual;
+        flujoInversion += valorComercialReal;
       }
 
       // FLUJO DE CAJA DE FINANCIAMIENTO
@@ -1971,6 +2078,7 @@ export class FlujoCajaService {
         flujoResultanteFinal: acumulado, // Solo flujos operativos
         inversionInicial: -valorAdquisicion,
         valorResidualRecuperado: valorResidual,
+        valorComercialRealRecuperado: valorComercialReal,
         anioRecuperacionValorResidual: anioValorResidual,
       },
     };
@@ -2039,6 +2147,7 @@ export class FlujoCajaService {
     seguroTrecSeleccionado: number,
     tasaImpuestos: number,
     tablaAmortizacionAnual: any,
+    valorComercialReal: number = 0,
   ) {
     console.log(
       `[FLUJO-CAJA] ========== GENERANDO ESTADO DE RESULTADOS ==========`,
@@ -2059,8 +2168,21 @@ export class FlujoCajaService {
       `[FLUJO-CAJA] Depreciación anual: $${Math.abs(depreciacionAnual).toLocaleString()}`,
     );
     console.log(
-      `[FLUJO-CAJA] Valor residual: $${valorResidual.toLocaleString()}`,
+      `[FLUJO-CAJA] Valor residual (enajenación): $${valorResidual.toLocaleString()}`,
     );
+    console.log(
+      `[FLUJO-CAJA] Valor comercial real (venta): $${valorComercialReal.toLocaleString()}`,
+    );
+
+    // Función auxiliar para calcular meses del año (último año proporcional)
+    const calcularMesesDelAnio = (anioActual: number): number => {
+      const esUltimoAnio = anioActual === aniosParaEscenarios;
+      const aniosValidos = aniosOperacionEstimados ?? 0;
+      const parteDecimal = aniosValidos - Math.floor(aniosValidos);
+      return esUltimoAnio && parteDecimal > 0
+        ? parteDecimal * datosPrecargados.mesesAlAnio
+        : datosPrecargados.mesesAlAnio;
+    };
 
     // Generar estado de resultados por año
     const aniosEstadoResultados = Array.from(
@@ -2070,15 +2192,25 @@ export class FlujoCajaService {
 
         // Calcular flujo de caja de operación para este año
         let flujoCajaOperacion = 0;
+        // Calcular depreciación proporcional para el último año
+        const mesesDelAnio = calcularMesesDelAnio(anioActual);
+        const esUltimoAnio = anioActual === aniosParaEscenarios;
+        const aniosValidos = aniosOperacionEstimados ?? 0;
+        const parteDecimal = aniosValidos - Math.floor(aniosValidos);
+        const factorProporcional =
+          esUltimoAnio && parteDecimal > 0
+            ? mesesDelAnio / datosPrecargados.mesesAlAnio
+            : 1;
+        const depreciacionAnualAjustada =
+          depreciacionAnual * factorProporcional;
+
         if (anioActual <= aniosParaEscenarios) {
           const ingresosTotales =
-            horasOperativasMes *
-            datosPrecargados.mesesAlAnio *
-            tarifainternaporhora;
+            horasOperativasMes * mesesDelAnio * tarifainternaporhora;
           const egresosTotales =
             -1 *
             horasOperativasMes *
-            datosPrecargados.mesesAlAnio *
+            mesesDelAnio *
             (gastodemantenimiento + gastosgenerales + seguroTrecSeleccionado);
 
           // Obtener interés de amortización para este año
@@ -2096,23 +2228,23 @@ export class FlujoCajaService {
             ingresosTotales +
             egresosTotales +
             interesAmortizacion +
-            depreciacionAnual;
+            depreciacionAnualAjustada;
           const impuestos =
             baseImponible > 0 ? -1 * (baseImponible * tasaImpuestos) : 0;
 
           flujoCajaOperacion = ingresosTotales + egresosTotales + impuestos;
         }
 
-        // (-) DEPRECIACIÓN: Aplicar en todos los años operativos
+        // (-) DEPRECIACIÓN: Aplicar en todos los años operativos (ajustada para último año)
         const depreciacion =
-          anioActual <= aniosParaEscenarios ? depreciacionAnual : 0;
+          anioActual <= aniosParaEscenarios ? depreciacionAnualAjustada : 0;
 
         // (-) ENAJENACIÓN: Valor residual en negativo en el año correspondiente
         const enajenacion =
-          anioActual === anioValorResidual ? -valorResidual : 0;
+          anioActual === anioValorResidual ? -valorComercialReal : 0;
 
-        // (+) VENTA: Valor residual en positivo en el año correspondiente
-        const venta = anioActual === anioValorResidual ? valorResidual : 0;
+        // (+) VENTA: Valor comercial real en positivo en el año correspondiente
+        const venta = anioActual === anioValorResidual ? valorComercialReal : 0;
 
         // FLUJO DE CAJA DE FINANCIAMIENTO: Intereses por financiamiento
         let flujoCajaFinanciamiento = 0;
@@ -2195,7 +2327,7 @@ export class FlujoCajaService {
         descripcionComponentes: {
           depreciacion: `Depreciación anual por ${aniosParaEscenarios} años`,
           enajenacion: `Enajenación (valor residual negativo) en año ${anioValorResidual}`,
-          venta: `Venta (valor residual positivo) en año ${anioValorResidual}`,
+          venta: `Venta (valor comercial real positivo) en año ${anioValorResidual}`,
           financiamiento: `Intereses por financiamiento durante ${aniosParaEscenarios} años`,
         },
       },
@@ -2554,9 +2686,10 @@ export class FlujoCajaService {
 
   /**
    * Determina el año en que se debe registrar el valor residual.
-   * Según la teoría financiera, el valor residual (o de salvamento) se realiza al final de la vida útil del activo.
-   * Para flujos de caja anuales discretos, esto corresponde al final del último año de operación,
-   * que se calcula con Math.ceil() sobre los años de operación estimados.
+   * Lógica basada en la parte decimal:
+   * - Si decimal < 0.5 → parteEntera + 1
+   * - Si decimal >= 0.5 → parteEntera + 2
+   * Ejemplos: 3.03→4, 3.5→5, 4.3→5, 4.5→6, 4.6→6, 5.0→6
    * @param aniosOperacionEstimados - Vida útil estimada del activo en años.
    * @returns El año (entero) en el que se debe contabilizar el valor residual.
    */
@@ -2566,6 +2699,247 @@ export class FlujoCajaService {
     if (aniosOperacionEstimados <= 0) {
       return 1; // Por defecto, si no hay vida útil, se considera en el primer año.
     }
-    return Math.ceil(aniosOperacionEstimados);
+
+    const parteEntera = Math.floor(aniosOperacionEstimados);
+    const parteDecimal = aniosOperacionEstimados - parteEntera;
+
+    if (parteDecimal < 0.5) {
+      // Decimal menor a 0.5: sumar 1 año
+      return parteEntera + 1;
+    } else {
+      // Decimal mayor o igual a 0.5: sumar 2 años
+      return parteEntera + 2;
+    }
+  }
+
+  /**
+   * ENDPOINT 1: Obtener parámetros de amortización para nueva máquina
+   * Usa el ÚLTIMO informe de costo horario de la máquina para obtener los parámetros clave
+   * que el frontend necesita para construir la tabla de amortización completa
+   */
+  async obtenerParametrosAmortizacion(machineId: number): Promise<any> {
+    console.log(
+      `[AMORTIZACIÓN] Obteniendo parámetros para máquina ${machineId}`,
+    );
+
+    // 1. Obtener máquina con datos completos
+    const machine = await this.prisma.machines.findUnique({
+      where: { id: machineId },
+      include: {
+        modelo: {
+          include: {
+            marca: true,
+            equipo: true,
+          },
+        },
+      },
+    });
+
+    if (!machine) {
+      throw new NotFoundException(`Máquina con ID ${machineId} no encontrada`);
+    }
+
+    // 2. Obtener último informe de costo horario
+    const informeCostoHorario =
+      await this.getUltimoInformeCostoHorario(machineId);
+
+    const informeData = informeCostoHorario.resultado_completo_json as any;
+
+    // 3. Extraer parámetros clave
+    const capital = Number(machine.valor_similar_nuevo) || 0;
+    const tasaAnual = Number(
+      informeCostoHorario.tasa_financiamiento_usada || 0,
+    );
+    const aniosFinanciamiento = Number(
+      informeCostoHorario.anios_financiamiento || 0,
+    );
+    const mesesPorAnio = Number(
+      informeCostoHorario.mes_por_anio ||
+        informeData?.parametros?.mesesPorAnio ||
+        12,
+    );
+
+    // 4. Validar que hay financiamiento
+    if (capital <= 0 || tasaAnual <= 0 || aniosFinanciamiento <= 0) {
+      return serializeBigInt({
+        machine: {
+          id: Number(machine.id),
+          marca: machine.modelo?.marca?.nombre || null,
+          modelo: machine.modelo?.nombre || null,
+          estado: machine.estado,
+        },
+        informeOrigen: {
+          id: Number(informeCostoHorario.id),
+          fechaCalculo: informeCostoHorario.fecha_calculo,
+        },
+        sinFinanciamiento: true,
+        mensaje: 'No hay datos de financiamiento para esta máquina',
+        parametrosAmortizacion: null,
+      });
+    }
+
+    // 5. Calcular TEA y cuota mensual
+    const tea = Math.pow(1 + tasaAnual, 1 / mesesPorAnio) - 1;
+    const totalPeriodos = mesesPorAnio * aniosFinanciamiento;
+    const denominador = 1 - Math.pow(1 + tea, -totalPeriodos);
+    const cuotaMensual = (capital * tea) / denominador;
+
+    console.log(`[AMORTIZACIÓN] Capital: $${capital.toLocaleString()}`);
+    console.log(`[AMORTIZACIÓN] Tasa anual: ${(tasaAnual * 100).toFixed(2)}%`);
+    console.log(`[AMORTIZACIÓN] TEA mensual: ${(tea * 100).toFixed(3)}%`);
+    console.log(`[AMORTIZACIÓN] Cuota mensual: $${cuotaMensual.toFixed(2)}`);
+
+    // 6. Construir response
+    return serializeBigInt({
+      machine: {
+        id: Number(machine.id),
+        marca: machine.modelo?.marca?.nombre || null,
+        modelo: machine.modelo?.nombre || null,
+        estado: machine.estado,
+        idEquipo: machine.id_equipo_interno,
+      },
+      informeOrigen: {
+        id: Number(informeCostoHorario.id),
+        fechaCalculo: informeCostoHorario.fecha_calculo,
+      },
+      parametrosAmortizacion: {
+        capital: Number(capital.toFixed(2)),
+        tasaAnual: Number(tasaAnual.toFixed(6)),
+        tasaMensual: Number(tea.toFixed(6)),
+        mesesPorAnio: mesesPorAnio,
+        aniosFinanciamiento: aniosFinanciamiento,
+        totalPeriodos: totalPeriodos,
+        cuotaMensual: Number(cuotaMensual.toFixed(2)),
+      },
+      formulasExcel: {
+        tea: '=POTENCIA(1 + tasaAnual, 1/mesesPorAnio) - 1',
+        cuotaMensual:
+          '=(capital * tea) / (1 - POTENCIA(1 + tea, -totalPeriodos))',
+        interesMensual: '=saldoPendiente * tea',
+        capitalMensual: '=cuotaMensual - interesMensual',
+      },
+    });
+  }
+
+  /**
+   * ENDPOINT 2: Obtener parámetros de amortización de un reporte guardado
+   * Usa los valores EXACTOS que se guardaron en ese análisis de flujo específico
+   */
+  async obtenerParametrosAmortizacionReporte(
+    flujoHistorialId: number,
+  ): Promise<any> {
+    console.log(
+      `[AMORTIZACIÓN] Obteniendo parámetros de reporte ${flujoHistorialId}`,
+    );
+
+    // 1. Buscar el registro de flujo historial
+    const flujoHistorial = await this.prisma.flujoHistorial.findUnique({
+      where: { id: flujoHistorialId },
+      include: {
+        machines: {
+          include: {
+            modelo: {
+              include: {
+                marca: true,
+                equipo: true,
+              },
+            },
+          },
+        },
+      },
+    });
+
+    if (!flujoHistorial) {
+      throw new NotFoundException(
+        `Análisis de flujo con ID ${flujoHistorialId} no encontrado`,
+      );
+    }
+
+    // 2. Extraer datos precargados del JSON
+    const otrosDatos = flujoHistorial.otros_datos_json as any;
+    const datosPrecargados = otrosDatos?.datosPrecargados;
+
+    if (!datosPrecargados || !datosPrecargados.informeOrigen) {
+      throw new NotFoundException(
+        `No se encontraron datos de amortización en el análisis ${flujoHistorialId}`,
+      );
+    }
+
+    // 3. Extraer parámetros EXACTOS que se usaron
+    const capital = Number(datosPrecargados.valorAdquisicion || 0);
+    const tasaAnual = Number(
+      datosPrecargados.informeOrigen.tasaFinanciamiento || 0,
+    );
+    const aniosFinanciamiento = Number(
+      datosPrecargados.informeOrigen.aniosFinanciamiento || 0,
+    );
+    const mesesPorAnio = Number(datosPrecargados.mesesAlAnio || 12);
+
+    // 4. Validar que había financiamiento
+    if (capital <= 0 || tasaAnual <= 0 || aniosFinanciamiento <= 0) {
+      return serializeBigInt({
+        flujoHistorial: {
+          id: Number(flujoHistorial.id),
+          fechaCalculo: flujoHistorial.fecha_calculo,
+          machine: {
+            id: Number(flujoHistorial.machines.id),
+            marca: flujoHistorial.machines.modelo?.marca?.nombre || null,
+            modelo: flujoHistorial.machines.modelo?.nombre || null,
+          },
+        },
+        sinFinanciamiento: true,
+        mensaje: 'Este análisis no incluía financiamiento',
+        parametrosAmortizacion: null,
+      });
+    }
+
+    // 5. Calcular TEA y cuota (mismos valores que se usaron originalmente)
+    const tea = Math.pow(1 + tasaAnual, 1 / mesesPorAnio) - 1;
+    const totalPeriodos = mesesPorAnio * aniosFinanciamiento;
+    const denominador = 1 - Math.pow(1 + tea, -totalPeriodos);
+    const cuotaMensual = (capital * tea) / denominador;
+
+    console.log(
+      `[AMORTIZACIÓN] Reporte ${flujoHistorialId} - Parámetros usados:`,
+    );
+    console.log(`  - Capital: $${capital.toLocaleString()}`);
+    console.log(`  - Tasa anual: ${(tasaAnual * 100).toFixed(2)}%`);
+    console.log(`  - Años: ${aniosFinanciamiento}`);
+    console.log(`  - Cuota mensual: $${cuotaMensual.toFixed(2)}`);
+
+    // 6. Construir response
+    return serializeBigInt({
+      flujoHistorial: {
+        id: Number(flujoHistorial.id),
+        fechaCalculo: flujoHistorial.fecha_calculo,
+        machine: {
+          id: Number(flujoHistorial.machines.id),
+          marca: flujoHistorial.machines.modelo?.marca?.nombre || null,
+          modelo: flujoHistorial.machines.modelo?.nombre || null,
+          estado: flujoHistorial.machines.estado,
+        },
+      },
+      informeOrigenUsado: {
+        id: Number(datosPrecargados.informeOrigen.id),
+        fechaCalculo: datosPrecargados.informeOrigen.fechaCalculo,
+      },
+      parametrosAmortizacion: {
+        capital: Number(capital.toFixed(2)),
+        tasaAnual: Number(tasaAnual.toFixed(6)),
+        tasaMensual: Number(tea.toFixed(6)),
+        mesesPorAnio: mesesPorAnio,
+        aniosFinanciamiento: aniosFinanciamiento,
+        totalPeriodos: totalPeriodos,
+        cuotaMensual: Number(cuotaMensual.toFixed(2)),
+      },
+      formulasExcel: {
+        tea: '=POTENCIA(1 + tasaAnual, 1/mesesPorAnio) - 1',
+        cuotaMensual:
+          '=(capital * tea) / (1 - POTENCIA(1 + tea, -totalPeriodos))',
+        interesMensual: '=saldoPendiente * tea',
+        capitalMensual: '=cuotaMensual - interesMensual',
+      },
+      nota: 'Estos son los parámetros EXACTOS usados en el análisis guardado',
+    });
   }
 }

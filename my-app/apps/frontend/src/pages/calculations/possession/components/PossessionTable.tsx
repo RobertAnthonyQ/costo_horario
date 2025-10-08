@@ -742,7 +742,7 @@ export default function PossessionTable({
                         >
                           {res ? (
                             <p className="font-medium text-orange-600">
-                              {res.factorDeMercado.toFixed(4)}
+                              {(res.factorDeMercado * 100).toFixed(2)}%
                             </p>
                           ) : (
                             <span className="text-muted-foreground">-</span>

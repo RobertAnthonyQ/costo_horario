@@ -279,6 +279,98 @@ export class ModeloComponentesHistoricoController {
     return this.modeloComponentesHistoricoService.getLatestByModelo(modeloId);
   }
 
+  @Get('total-resumen-by-modelo/:modeloId')
+  @ApiOperation({
+    summary: 'Obtener resumen total de costos aplicados por modelo',
+    description:
+      'Retorna un resumen completo de costos con suma total de montos aplicados y porcentajes respecto al valor de adquisición',
+  })
+  @ApiParam({
+    name: 'modeloId',
+    description: 'ID del modelo',
+    type: Number,
+    example: 1,
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Resumen total de costos obtenido exitosamente',
+    schema: {
+      example: {
+        modelo: {
+          id: 1,
+          nombre: 'CAT 320D',
+          marca: 'Caterpillar',
+          equipo: 'Excavadora',
+          flota: 'Flota A',
+          vida_util_fabricante: 10000,
+        },
+        resumen_total: {
+          valor_adquisicion: 1500000,
+          total_monto_aplicado: 125000,
+          porcentaje_respecto_valor_adquisicion: 8.33,
+          cantidad_componentes: 7,
+        },
+        componentes_detalle: [
+          {
+            componente_id: 1,
+            componente_nombre: 'Motor',
+            monto_aplicado_al_proyecto: 45000,
+            porcentaje_respecto_total: 36.0,
+            porcentaje_respecto_valor_adquisicion: 3.0,
+          },
+        ],
+      },
+    },
+  })
+  getTotalResumenByModelo(@Param('modeloId', ParseIntPipe) modeloId: number) {
+    return this.modeloComponentesHistoricoService.getTotalResumenByModelo(
+      modeloId,
+    );
+  }
+
+  @Get('resumen-por-componente')
+  @ApiOperation({
+    summary: 'Obtener resumen de costos agrupados por componente',
+    description:
+      'Retorna estadísticas y análisis comparativo de costos por componente, opcionalmente filtrado por modelo',
+  })
+  @ApiQuery({
+    name: 'modeloId',
+    description: 'ID del modelo para filtrar (opcional)',
+    type: Number,
+    required: false,
+    example: 1,
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Resumen por componente obtenido exitosamente',
+    schema: {
+      example: {
+        resumen_general: {
+          total_componentes: 7,
+          total_registros: 25,
+          total_general_monto_aplicado: 125000,
+        },
+        componentes: [
+          {
+            componente_id: 1,
+            componente_nombre: 'Motor',
+            estadisticas: {
+              total_monto_aplicado: 45000,
+              promedio_monto_aplicado: 15000,
+            },
+            porcentaje_respecto_total_general: 36.0,
+          },
+        ],
+      },
+    },
+  })
+  getResumenPorComponente(@Query('modeloId', ParseIntPipe) modeloId?: number) {
+    return this.modeloComponentesHistoricoService.getResumenPorComponente(
+      modeloId,
+    );
+  }
+
   @Get('machines-by-modelo/:modeloId')
   @ApiOperation({
     summary: 'Obtener máquinas de un modelo para selección',

@@ -12,6 +12,7 @@ export interface DatosPrecargadosInforme {
     factorMercado: number;
     horasUsoAnual: number; // calculado: horasMinimas * mesesAlAnio
     seguroTrec: number; // seguroTrec específico de cada escenario
+    valorComercialReal: number; // valorComercialReal específico de cada escenario
   }[];
 
   // Totales de mantenimiento desde el cálculo del informe

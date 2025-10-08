@@ -156,6 +156,65 @@ class FlujoCajaService {
       return handleNetworkError(error);
     }
   }
+
+  /**
+   * Obtiene parámetros de amortización para una máquina
+   * Usa el último informe de costo horario de la máquina
+   */
+  async getParametrosAmortizacion(
+    machineId: number
+  ): Promise<ApiResponse<any>> {
+    try {
+      console.log(
+        "🌐 Obteniendo parámetros de amortización para máquina:",
+        machineId
+      );
+
+      const response = await fetch(`${ENDPOINT}/amortizacion/parametros`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ machineId }),
+      });
+
+      const result = await handleApiResponse<any>(response);
+      console.log("📊 Parámetros de amortización recibidos:", result);
+
+      return result;
+    } catch (error) {
+      console.error("🚨 Error en getParametrosAmortizacion:", error);
+      return handleNetworkError(error);
+    }
+  }
+
+  /**
+   * Obtiene parámetros de amortización de un reporte guardado
+   * Devuelve los valores exactos que se usaron en ese análisis
+   */
+  async getParametrosAmortizacionReporte(
+    flujoHistorialId: number
+  ): Promise<ApiResponse<any>> {
+    try {
+      console.log(
+        "🌐 Obteniendo parámetros de amortización de reporte:",
+        flujoHistorialId
+      );
+
+      const response = await fetch(
+        `${ENDPOINT}/amortizacion/reporte/${flujoHistorialId}`
+      );
+
+      const result = await handleApiResponse<any>(response);
+      console.log(
+        "📊 Parámetros de amortización del reporte recibidos:",
+        result
+      );
+
+      return result;
+    } catch (error) {
+      console.error("🚨 Error en getParametrosAmortizacionReporte:", error);
+      return handleNetworkError(error);
+    }
+  }
 }
 
 export const flujoCajaService = new FlujoCajaService();

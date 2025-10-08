@@ -10,6 +10,7 @@ import {
   FlujoCajaVersion,
 } from "./models/types";
 import { ParametersForm, ReportDisplay, HistorySection } from "./components";
+import { AmortizacionModal } from "./components/AmortizacionModal";
 
 export default function CashFlowAnalysis() {
   const [machines, setMachines] = useState<any[]>([]);
@@ -25,6 +26,15 @@ export default function CashFlowAnalysis() {
   const [report, setReport] = useState<FlujoCajaResponse | null>(null);
   const [showReportModal, setShowReportModal] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
+
+  // Estado para el modal de amortización
+  const [amortizacionModal, setAmortizacionModal] = useState<{
+    open: boolean;
+    machineId?: number;
+    flujoHistorialId?: number;
+  }>({
+    open: false,
+  });
 
   // Debug: Monitor modal state changes
   useEffect(() => {
@@ -238,6 +248,32 @@ export default function CashFlowAnalysis() {
     }
   };
 
+  // Handler: Ver amortización de máquina seleccionada (POST)
+  const handleViewAmortizacion = () => {
+    if (machineId) {
+      console.log("🔍 Abriendo modal de amortización para máquina:", machineId);
+      setAmortizacionModal({
+        open: true,
+        machineId: parseInt(machineId),
+      });
+    }
+  };
+
+  // Handler: Ver amortización de versión guardada (GET)
+  const handleViewAmortizacionVersion = (version: FlujoCajaVersion) => {
+    console.log("🔍 Abriendo modal de amortización para versión:", version.id);
+    setAmortizacionModal({
+      open: true,
+      flujoHistorialId: version.id,
+    });
+  };
+
+  // Handler: Cerrar modal de amortización
+  const handleCloseAmortizacion = () => {
+    console.log("❌ Cerrando modal de amortización");
+    setAmortizacionModal({ open: false });
+  };
+
   return (
     <div className="space-y-6">
       <div>
@@ -275,6 +311,7 @@ export default function CashFlowAnalysis() {
         onSave={onSave}
         onToggleHistory={() => setShowHistory(!showHistory)}
         onViewVersionDetails={handleViewVersionDetails}
+        onViewAmortizacion={handleViewAmortizacion}
       />
 
       {/* Historial de versiones - solo se muestra si showHistory es true */}
@@ -283,6 +320,7 @@ export default function CashFlowAnalysis() {
           versions={versions}
           versionsLoading={versionsLoading}
           onViewDetails={handleViewVersionDetails}
+          onViewAmortizacion={handleViewAmortizacionVersion}
         />
       )}
 
@@ -291,6 +329,14 @@ export default function CashFlowAnalysis() {
         selectedMachine={selectedMachine}
         showReportModal={showReportModal}
         onCloseModal={() => setShowReportModal(false)}
+      />
+
+      {/* Modal de amortización */}
+      <AmortizacionModal
+        open={amortizacionModal.open}
+        onClose={handleCloseAmortizacion}
+        machineId={amortizacionModal.machineId}
+        flujoHistorialId={amortizacionModal.flujoHistorialId}
       />
     </div>
   );

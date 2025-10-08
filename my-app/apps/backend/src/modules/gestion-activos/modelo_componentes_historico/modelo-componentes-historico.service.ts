@@ -472,6 +472,27 @@ export class ModeloComponentesHistoricoService {
   }
 
   async getLatestByModelo(modeloId: number) {
+    // Obtener información del modelo y una máquina representativa para el valor de adquisición
+    const modelo = await this.prisma.modelos.findUnique({
+      where: { id: modeloId },
+      include: {
+        marca: true,
+        equipo: true,
+        flota: true,
+        machines: {
+          select: {
+            id: true,
+            valor_similar_nuevo: true,
+            id_equipo_interno: true,
+          },
+          take: 1, // Solo necesitamos una máquina para obtener el valor de adquisición representativo
+          orderBy: {
+            created_at: 'desc',
+          },
+        },
+      },
+    });
+
     // Obtener el registro más reciente de cada componente para un modelo específico
     const registros = await this.prisma.modeloComponentesHistorico.findMany({
       where: { modelo_id: modeloId },
@@ -498,9 +519,66 @@ export class ModeloComponentesHistoricoService {
     }
 
     const latestRegistros = Array.from(latestByComponenteId.values());
-    return serializeBigIntArray(
-      this.addCalculatedFieldsToArray(latestRegistros),
-    );
+    const registrosConCalculo =
+      this.addCalculatedFieldsToArray(latestRegistros);
+
+    // Calcular totales y porcentajes
+    let totalMontoAplicado = 0;
+    registrosConCalculo.forEach((registro: any) => {
+      totalMontoAplicado += registro.monto_aplicado_al_proyecto || 0;
+    });
+
+    // Obtener valor de adquisición (valor_similar_nuevo)
+    const valorAdquisicion = modelo?.machines?.[0]?.valor_similar_nuevo
+      ? Number(modelo.machines[0].valor_similar_nuevo)
+      : 0;
+
+    // Calcular porcentaje respecto al valor de adquisición
+    const porcentajeRespectValorAdquisicion =
+      valorAdquisicion > 0 ? (totalMontoAplicado / valorAdquisicion) * 100 : 0;
+
+    // Construir respuesta con resumen incluido
+    const resultado = {
+      data: registrosConCalculo.map((registro: any) => ({
+        ...registro,
+        porcentaje_respecto_total:
+          totalMontoAplicado > 0
+            ? parseFloat(
+                (
+                  (registro.monto_aplicado_al_proyecto / totalMontoAplicado) *
+                  100
+                ).toFixed(2),
+              )
+            : 0,
+        porcentaje_respecto_valor_adquisicion:
+          valorAdquisicion > 0
+            ? parseFloat(
+                (
+                  (registro.monto_aplicado_al_proyecto / valorAdquisicion) *
+                  100
+                ).toFixed(4),
+              )
+            : 0,
+      })),
+      resumen_total: {
+        modelo_info: {
+          id: modelo?.id || modeloId,
+          nombre: modelo?.nombre || 'Desconocido',
+          marca: modelo?.marca?.nombre || 'Desconocida',
+          equipo: modelo?.equipo?.nombre || 'Desconocido',
+          flota: modelo?.flota?.nombre || 'Desconocida',
+        },
+        valor_adquisicion: valorAdquisicion,
+        total_monto_aplicado: parseFloat(totalMontoAplicado.toFixed(2)),
+        porcentaje_respecto_valor_adquisicion: parseFloat(
+          porcentajeRespectValorAdquisicion.toFixed(4),
+        ),
+        cantidad_componentes: registrosConCalculo.length,
+        fecha_calculo: new Date().toISOString(),
+      },
+    };
+
+    return serializeBigInt(resultado);
   }
 
   async getStatistics() {
@@ -605,5 +683,306 @@ export class ModeloComponentesHistoricoService {
     });
 
     return serializeBigIntArray(machines);
+  }
+
+  /**
+   * Obtiene el resumen total de costos aplicados por modelo
+   * Incluye la suma total de montos aplicados y el porcentaje respecto al valor de adquisición
+   */
+  async getTotalResumenByModelo(modeloId: number) {
+    try {
+      // Obtener información del modelo y una máquina representativa para el valor de adquisición
+      const modelo = await this.prisma.modelos.findUnique({
+        where: { id: modeloId },
+        include: {
+          marca: true,
+          equipo: true,
+          flota: true,
+          machines: {
+            select: {
+              id: true,
+              valor_similar_nuevo: true,
+              id_equipo_interno: true,
+            },
+            take: 1, // Solo necesitamos una máquina para obtener el valor de adquisición representativo
+            orderBy: {
+              created_at: 'desc',
+            },
+          },
+        },
+      });
+
+      if (!modelo) {
+        throw new NotFoundException(`Modelo con ID ${modeloId} no encontrado`);
+      }
+
+      // Obtener los registros históricos más recientes por componente
+      const registrosRecientesResp = await this.getLatestByModelo(modeloId);
+      const registrosRecientes = registrosRecientesResp.data || [];
+
+      // Calcular totales
+      let totalMontoAplicado = 0;
+      const componentesDetalle = registrosRecientes.map((registro: any) => {
+        const montoAplicado = registro.monto_aplicado_al_proyecto || 0;
+        totalMontoAplicado += montoAplicado;
+
+        return {
+          componente_id: registro.componente_id,
+          componente_nombre: registro.componente?.nombre || 'Desconocido',
+          monto_usd: registro.monto_usd || 0,
+          pcr: registro.pcr || 0,
+          distribucion: registro.distribucion || 0,
+          monto_aplicado_al_proyecto: montoAplicado,
+          fecha_efectiva: registro.fecha_efectiva,
+        };
+      });
+
+      // Obtener valor de adquisición (valor_similar_nuevo)
+      const valorAdquisicion = modelo.machines?.[0]?.valor_similar_nuevo
+        ? Number(modelo.machines[0].valor_similar_nuevo)
+        : 0;
+
+      // Calcular porcentaje respecto al valor de adquisición
+      const porcentajeRespectValorAdquisicion =
+        valorAdquisicion > 0
+          ? (totalMontoAplicado / valorAdquisicion) * 100
+          : 0;
+
+      const resultado = {
+        modelo: {
+          id: modelo.id,
+          nombre: modelo.nombre,
+          marca: modelo.marca?.nombre || 'Desconocida',
+          equipo: modelo.equipo?.nombre || 'Desconocido',
+          flota: modelo.flota?.nombre || 'Desconocida',
+          vida_util_fabricante: modelo.vida_util_fabricante,
+        },
+        resumen_total: {
+          valor_adquisicion: valorAdquisicion,
+          total_monto_aplicado: parseFloat(totalMontoAplicado.toFixed(2)),
+          porcentaje_respecto_valor_adquisicion: parseFloat(
+            porcentajeRespectValorAdquisicion.toFixed(4),
+          ),
+          cantidad_componentes: componentesDetalle.length,
+        },
+        componentes_detalle: componentesDetalle.map((comp) => ({
+          ...comp,
+          porcentaje_respecto_total:
+            totalMontoAplicado > 0
+              ? parseFloat(
+                  (
+                    (comp.monto_aplicado_al_proyecto / totalMontoAplicado) *
+                    100
+                  ).toFixed(2),
+                )
+              : 0,
+          porcentaje_respecto_valor_adquisicion:
+            valorAdquisicion > 0
+              ? parseFloat(
+                  (
+                    (comp.monto_aplicado_al_proyecto / valorAdquisicion) *
+                    100
+                  ).toFixed(4),
+                )
+              : 0,
+        })),
+        metadata: {
+          fecha_calculo: new Date().toISOString(),
+          total_registros_historicos: componentesDetalle.length,
+        },
+      };
+
+      return serializeBigInt(resultado);
+    } catch (error) {
+      this.logger.error('Error en getTotalResumenByModelo:', error);
+
+      if (error instanceof NotFoundException) {
+        throw error;
+      }
+
+      throw new BadRequestException(
+        'Error al obtener el resumen total por modelo',
+      );
+    }
+  }
+
+  /**
+   * Obtiene el resumen de costos aplicados agrupados por componente
+   * Útil para análisis comparativo entre diferentes componentes
+   */
+  async getResumenPorComponente(modeloId?: number) {
+    try {
+      // Construir la query base
+      const whereClause = modeloId ? { modelo_id: modeloId } : {};
+
+      // Obtener todos los registros históricos
+      const registros = await this.prisma.modeloComponentesHistorico.findMany({
+        where: whereClause,
+        include: {
+          modelo: {
+            include: {
+              marca: true,
+              equipo: true,
+              machines: {
+                select: {
+                  valor_similar_nuevo: true,
+                },
+                take: 1,
+                orderBy: {
+                  created_at: 'desc',
+                },
+              },
+            },
+          },
+          componente: true,
+        },
+        orderBy: {
+          fecha_efectiva: 'desc',
+        },
+      });
+
+      // Agregar campos calculados
+      const registrosConCalculo = this.addCalculatedFieldsToArray(registros);
+
+      // Agrupar por componente
+      const componentesMap = new Map<string, any>();
+
+      registrosConCalculo.forEach((registro: any) => {
+        const componenteKey = `${registro.componente_id}`;
+        const componenteNombre = registro.componente?.nombre || 'Desconocido';
+
+        if (!componentesMap.has(componenteKey)) {
+          componentesMap.set(componenteKey, {
+            componente_id: registro.componente_id,
+            componente_nombre: componenteNombre,
+            registros: [],
+            total_monto_usd: 0,
+            total_monto_aplicado: 0,
+            modelos_involucrados: new Set(),
+          });
+        }
+
+        const componenteData = componentesMap.get(componenteKey)!;
+        componenteData.registros.push({
+          id: registro.id,
+          modelo_id: registro.modelo_id,
+          modelo_nombre: registro.modelo?.nombre || 'Desconocido',
+          marca_nombre: registro.modelo?.marca?.nombre || 'Desconocida',
+          monto_usd: registro.monto_usd || 0,
+          pcr: registro.pcr || 0,
+          distribucion: registro.distribucion || 0,
+          monto_aplicado_al_proyecto: registro.monto_aplicado_al_proyecto || 0,
+          fecha_efectiva: registro.fecha_efectiva,
+          valor_adquisicion_modelo: registro.modelo?.machines?.[0]
+            ?.valor_similar_nuevo
+            ? Number(registro.modelo.machines[0].valor_similar_nuevo)
+            : 0,
+        });
+
+        componenteData.total_monto_usd += registro.monto_usd || 0;
+        componenteData.total_monto_aplicado +=
+          registro.monto_aplicado_al_proyecto || 0;
+        componenteData.modelos_involucrados.add(
+          `${registro.modelo?.nombre} (${registro.modelo?.marca?.nombre})`,
+        );
+      });
+
+      // Convertir Map a Array y agregar estadísticas
+      const componentesResumen = Array.from(componentesMap.values()).map(
+        (comp) => {
+          const promedioMontoUsd =
+            comp.registros.length > 0
+              ? comp.total_monto_usd / comp.registros.length
+              : 0;
+
+          const promedioMontoAplicado =
+            comp.registros.length > 0
+              ? comp.total_monto_aplicado / comp.registros.length
+              : 0;
+
+          return {
+            componente_id: comp.componente_id,
+            componente_nombre: comp.componente_nombre,
+            estadisticas: {
+              total_registros: comp.registros.length,
+              total_monto_usd: parseFloat(comp.total_monto_usd.toFixed(2)),
+              total_monto_aplicado: parseFloat(
+                comp.total_monto_aplicado.toFixed(2),
+              ),
+              promedio_monto_usd: parseFloat(promedioMontoUsd.toFixed(2)),
+              promedio_monto_aplicado: parseFloat(
+                promedioMontoAplicado.toFixed(2),
+              ),
+              modelos_involucrados: Array.from(comp.modelos_involucrados),
+            },
+            registros_detalle: comp.registros.map((reg: any) => ({
+              ...reg,
+              porcentaje_respecto_valor_adquisicion:
+                reg.valor_adquisicion_modelo > 0
+                  ? parseFloat(
+                      (
+                        (reg.monto_aplicado_al_proyecto /
+                          reg.valor_adquisicion_modelo) *
+                        100
+                      ).toFixed(4),
+                    )
+                  : 0,
+            })),
+          };
+        },
+      );
+
+      // Ordenar por total_monto_aplicado descendente
+      componentesResumen.sort(
+        (a, b) =>
+          b.estadisticas.total_monto_aplicado -
+          a.estadisticas.total_monto_aplicado,
+      );
+
+      // Calcular totales generales
+      const totalGeneralMontoUsd = componentesResumen.reduce(
+        (sum, comp) => sum + comp.estadisticas.total_monto_usd,
+        0,
+      );
+      const totalGeneralMontoAplicado = componentesResumen.reduce(
+        (sum, comp) => sum + comp.estadisticas.total_monto_aplicado,
+        0,
+      );
+
+      const resultado = {
+        filtros: {
+          modelo_id: modeloId || null,
+          fecha_consulta: new Date().toISOString(),
+        },
+        resumen_general: {
+          total_componentes: componentesResumen.length,
+          total_registros: registros.length,
+          total_general_monto_usd: parseFloat(totalGeneralMontoUsd.toFixed(2)),
+          total_general_monto_aplicado: parseFloat(
+            totalGeneralMontoAplicado.toFixed(2),
+          ),
+        },
+        componentes: componentesResumen.map((comp) => ({
+          ...comp,
+          porcentaje_respecto_total_general:
+            totalGeneralMontoAplicado > 0
+              ? parseFloat(
+                  (
+                    (comp.estadisticas.total_monto_aplicado /
+                      totalGeneralMontoAplicado) *
+                    100
+                  ).toFixed(2),
+                )
+              : 0,
+        })),
+      };
+
+      return serializeBigInt(resultado);
+    } catch (error) {
+      this.logger.error('Error en getResumenPorComponente:', error);
+      throw new BadRequestException(
+        'Error al obtener el resumen por componente',
+      );
+    }
   }
 }

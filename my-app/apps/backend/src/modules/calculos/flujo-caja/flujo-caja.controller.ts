@@ -13,6 +13,7 @@ import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
 import { FlujoCajaService } from './flujo-caja.service';
 import { CreateAnalisisFlujoDto } from './dto/create-analisis-flujo.dto';
 import { ExtractEscenariosDto } from './dto/extract-escenarios.dto';
+import { AmortizacionParametrosDto } from './dto/amortizacion-parametros.dto';
 import type { FlujoCajaResponse } from './interfaces/flujo-caja-response.interface';
 
 @ApiTags('Análisis de Flujo de Caja')
@@ -111,6 +112,49 @@ export class FlujoCajaController {
     machineId?: number,
   ): Promise<any[]> {
     return this.flujoCajaService.findVersiones(machineId);
+  }
+
+  @Post('amortizacion/parametros')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: 'Obtener parámetros de amortización para crear tabla',
+    description:
+      'Devuelve parámetros clave del último informe de costo horario para que el frontend construya la tabla de amortización. Incluye capital, tasa, TEA, años, cuota mensual y fórmulas Excel.',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Parámetros obtenidos exitosamente',
+    type: Object,
+  })
+  @ApiResponse({
+    status: 404,
+    description: 'Máquina no encontrada o sin informe de costo horario previo',
+  })
+  async obtenerParametrosAmortizacion(
+    @Body() dto: AmortizacionParametrosDto,
+  ): Promise<any> {
+    return this.flujoCajaService.obtenerParametrosAmortizacion(dto.machineId);
+  }
+
+  @Get('amortizacion/reporte/:id')
+  @ApiOperation({
+    summary: 'Obtener parámetros de amortización de un reporte guardado',
+    description:
+      'Devuelve los parámetros exactos que se usaron en un análisis de flujo específico. Útil para reproducir exactamente la tabla de amortización de un reporte pasado.',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Parámetros del reporte obtenidos exitosamente',
+    type: Object,
+  })
+  @ApiResponse({
+    status: 404,
+    description: 'Análisis de flujo no encontrado',
+  })
+  async obtenerParametrosAmortizacionReporte(
+    @Param('id', ParseIntPipe) id: number,
+  ): Promise<any> {
+    return this.flujoCajaService.obtenerParametrosAmortizacionReporte(id);
   }
 
   @Get(':id')

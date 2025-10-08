@@ -603,10 +603,9 @@ export function ReportDisplay({
                       <td className="border border-gray-300 p-2 font-medium">
                         Horas operativos al mes
                       </td>
-                      <td className="border border-gray-300 p-2 text-center bg-red-500 text-white font-bold">
+                      <td className="border border-gray-300 p-2 text-right bg-red-500 text-white font-bold">
                         {formatNumber(
-                          (aniosOperativos[0]?.horasOperativasAnio || 0) /
-                            (aniosOperativos[0]?.mesesAlAnio || 12),
+                          aniosOperativos[0]?.horasOperativasMes || 0,
                           0
                         )}
                         /mes
@@ -614,17 +613,16 @@ export function ReportDisplay({
                       {aniosOperativos.map((anio: any) => (
                         <td
                           key={anio.anio}
-                          className="border border-gray-300 p-2 text-center"
+                          className="border border-gray-300 p-2 text-right"
                         >
-                          {formatNumber(
-                            (anio.horasOperativasAnio || 0) /
-                              (anio.mesesAlAnio || 12),
-                            0
-                          )}
+                          {formatNumber(anio.horasOperativasMes || 0, 0)}
                         </td>
                       ))}
-                      <td className="border border-gray-300 p-2 text-center bg-gray-200 font-bold">
-                        -
+                      <td className="border border-gray-300 p-2 text-right bg-gray-200 font-bold">
+                        {formatNumber(
+                          aniosOperativos[0]?.horasOperativasMes || 0,
+                          0
+                        )}
                       </td>
                     </tr>
 
@@ -633,18 +631,24 @@ export function ReportDisplay({
                       <td className="border border-gray-300 p-2 font-medium">
                         Meses al año
                       </td>
-                      <td className="border border-gray-300 p-2 text-center bg-green-500 text-white font-bold">
-                        {aniosOperativos[0]?.mesesAlAnio || 12} m
+                      <td className="border border-gray-300 p-2 text-right bg-green-500 text-white font-bold">
+                        {formatNumber(
+                          aniosOperativos[0]?.mesesDelAnio || 12,
+                          2
+                        )}{" "}
+                        m
                       </td>
                       {aniosOperativos.map((anio: any) => (
                         <td
                           key={anio.anio}
-                          className="border border-gray-300 p-2 text-center"
+                          className="border border-gray-300 p-2 text-right"
                         >
-                          {anio.mesesAlAnio || 12}
+                          {formatNumber(anio.mesesDelAnio || 12, 2)}
                         </td>
                       ))}
-                      <td className="border border-gray-300 p-2 text-center bg-gray-200"></td>
+                      <td className="border border-gray-300 p-2 text-right bg-gray-200">
+                        -
+                      </td>
                     </tr>
 
                     {/* Horas operativos al año */}
@@ -652,19 +656,24 @@ export function ReportDisplay({
                       <td className="border border-gray-300 p-2 font-medium">
                         Horas operativos al año
                       </td>
-                      <td className="border border-gray-300 p-2 text-center">
+                      <td className="border border-gray-300 p-2 text-right">
                         hr
                       </td>
                       {aniosOperativos.map((anio: any) => (
                         <td
                           key={anio.anio}
-                          className="border border-gray-300 p-2 text-center"
+                          className="border border-gray-300 p-2 text-right"
                         >
                           {formatNumber(anio.horasOperativasAnio, 0)}
                         </td>
                       ))}
-                      <td className="border border-gray-300 p-2 text-center bg-gray-200 font-bold">
-                        {formatNumber(resultadoFlujo.vidaUtilHoras, 0)}
+                      <td className="border border-gray-300 p-2 text-right bg-gray-200 font-bold">
+                        {formatNumber(
+                          flujoOperacion.resumenFlujoCajaOperacion
+                            ?.totalHorasOperativasAnio ||
+                            resultadoFlujo.vidaUtilHoras,
+                          0
+                        )}
                       </td>
                     </tr>
 
