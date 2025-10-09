@@ -34,8 +34,19 @@ async function bootstrap() {
     customSiteTitle: 'Gestión de Activos API',
   });
 
-  // Habilitar CORS si es necesario
-  app.enableCors();
+  // Configurar CORS para desarrollo y producción
+  app.enableCors({
+    origin: [
+      'http://localhost:5173', // Vite dev server
+      'http://localhost:3000', // Next.js dev server
+      'https://costo-horario-frontend.onrender.com', // Frontend en Render
+      /\.vercel\.app$/, // Vercel deployments
+      /\.netlify\.app$/, // Netlify deployments
+    ],
+    credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'Accept'],
+  });
 
   const port = process.env.PORT ? Number(process.env.PORT) : 4000;
   await app.listen(port);

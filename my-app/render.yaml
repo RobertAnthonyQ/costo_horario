@@ -1,0 +1,75 @@
+# Render Blueprint para Turborepo Monorepo
+# Este archivo configura todos los servicios de tu aplicación
+
+services:
+  # =====================================
+  # BACKEND API (NestJS)
+  # =====================================
+  - type: web
+    name: costo-horario-backend
+    runtime: node
+    region: oregon
+    plan: free
+    branch: dev
+    buildCommand: npm install && cd apps/backend && npm install && npm run build
+    startCommand: cd apps/backend && npm run start:prod
+    healthCheckPath: /
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 3000
+      - key: DATABASE_URL
+        sync: false
+      - key: DIRECT_URL
+        sync: false
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_ANON_KEY
+        sync: false
+      - key: SUPABASE_SERVICE_ROLE_KEY
+        sync: false
+      - key: VITE_SUPABASE_BUCKET
+        value: machines-images
+
+  # =====================================
+  # FRONTEND (React + Vite) - ESTÁTICO
+  # =====================================
+  - type: web
+    name: costo-horario-frontend
+    runtime: static
+    region: oregon
+    plan: free
+    branch: dev
+    buildCommand: npm install && cd apps/frontend && npm install && npm run build
+    staticPublishPath: apps/frontend/dist
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html
+    envVars:
+      - key: VITE_SUPABASE_URL
+        sync: false
+      - key: VITE_SUPABASE_ANON_KEY
+        sync: false
+      - key: VITE_SUPABASE_BUCKET
+        value: machines-images
+      - key: VITE_API_URL
+        value: https://costo-horario-backend.onrender.com
+
+  # =====================================
+  # WEB (Next.js) - OPCIONAL
+  # =====================================
+  - type: web
+    name: costo-horario-web
+    runtime: node
+    region: oregon
+    plan: free
+    branch: dev
+    buildCommand: npm install && cd apps/web && npm install && npm run build
+    startCommand: cd apps/web && npm start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 3000
