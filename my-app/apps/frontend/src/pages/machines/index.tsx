@@ -11,6 +11,10 @@ import {
   CreateMachineModal,
   EditMachineModal,
   DeleteMachineModal,
+  MachinesPageSkeleton,
+  MachineStatsSkeleton,
+  MachineTableSkeleton,
+  MachineGridSkeleton,
 } from "./components";
 import { machines as mockMachines } from "./models/data";
 import { ViewMode, Machine } from "./models/types";
@@ -136,6 +140,11 @@ export default function Machines() {
     setSelectedMachine(null);
   };
 
+  // Si está cargando, mostrar el skeleton completo
+  if (loading) {
+    return <MachinesPageSkeleton />;
+  }
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -198,12 +207,7 @@ export default function Machines() {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          {loading ? (
-            <div className="flex items-center justify-center h-32">
-              <Loader2 className="h-8 w-8 animate-spin" />
-              <span className="ml-2">Cargando máquinas...</span>
-            </div>
-          ) : filteredMachines.length === 0 ? (
+          {filteredMachines.length === 0 ? (
             <div className="text-center py-8">
               <p className="text-muted-foreground">
                 {searchTerm

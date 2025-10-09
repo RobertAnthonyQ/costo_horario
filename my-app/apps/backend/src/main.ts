@@ -40,6 +40,7 @@ async function bootstrap() {
       'http://localhost:5173', // Vite dev server
       'http://localhost:3000', // Next.js dev server
       'https://costo-horario-frontend.onrender.com', // Frontend en Render
+      'https://costo-horario-front.onrender.com', // Frontend alternativo en Render
       /\.vercel\.app$/, // Vercel deployments
       /\.netlify\.app$/, // Netlify deployments
     ],
