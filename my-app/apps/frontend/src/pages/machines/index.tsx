@@ -16,7 +16,6 @@ import {
   MachineTableSkeleton,
   MachineGridSkeleton,
 } from "./components";
-import { machines as mockMachines } from "./models/data";
 import { ViewMode, Machine } from "./models/types";
 import { machinesService } from "./services/machinesService";
 
@@ -27,6 +26,7 @@ export default function Machines() {
   const [viewMode, setViewMode] = useState<ViewMode>("table");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string>("");
+  const [retryCount, setRetryCount] = useState(0);
 
   // Estados de modales
   const [createModalOpen, setCreateModalOpen] = useState(false);
@@ -39,10 +39,14 @@ export default function Machines() {
     loadMachines();
   }, []);
 
-  const loadMachines = async () => {
+  const loadMachines = async (isRetry = false) => {
     console.log("🔄 Frontend: Iniciando carga de máquinas...");
-    setLoading(true);
-    setError("");
+
+    if (!isRetry) {
+      setLoading(true);
+      setError("");
+      setRetryCount(0);
+    }
 
     try {
       console.log("📞 Frontend: Llamando a machinesService.getAllMachines()");
@@ -57,19 +61,43 @@ export default function Machines() {
           "máquinas"
         );
         setMachines(response.data);
+        setLoading(false);
+        setError("");
+        setRetryCount(0);
       } else {
-        console.warn("⚠️ Frontend: Error en la respuesta, usando datos mock");
-        console.warn("Error details:", response.error);
-        setError(response.error || "Error al cargar las máquinas");
-        // Fallback a datos mock
-        setMachines(mockMachines);
+        // Si el backend está despertando, reintentar hasta 6 veces (60 segundos total)
+        // Render puede tardar hasta 50 segundos en despertar el backend
+        if (retryCount < 6) {
+          console.log(
+            `🔄 Reintentando... (${retryCount + 1}/6) - Esperando que el servidor despierte...`
+          );
+          setRetryCount((prev) => prev + 1);
+          setTimeout(() => loadMachines(true), 10000); // Reintentar después de 10 segundos
+        } else {
+          console.error("❌ Máximo de reintentos alcanzado (60 segundos)");
+          setError(
+            "No se pudo conectar con el servidor después de 60 segundos. El servidor puede estar caído. Por favor, intenta nuevamente."
+          );
+          setLoading(false);
+        }
       }
-      setLoading(false);
     } catch (err: any) {
       console.error("❌ Frontend: Error inesperado:", err);
-      setError(err.message || "Error inesperado al cargar las máquinas");
-      setMachines(mockMachines); // Fallback a datos mock
-      setLoading(false);
+
+      // Si el backend está despertando, reintentar hasta 6 veces (60 segundos total)
+      if (retryCount < 6) {
+        console.log(
+          `🔄 Reintentando... (${retryCount + 1}/6) - Esperando que el servidor despierte...`
+        );
+        setRetryCount((prev) => prev + 1);
+        setTimeout(() => loadMachines(true), 10000); // Reintentar después de 10 segundos
+      } else {
+        console.error("❌ Máximo de reintentos alcanzado (60 segundos)");
+        setError(
+          "No se pudo conectar con el servidor después de 60 segundos. El servidor puede estar caído. Por favor, intenta nuevamente."
+        );
+        setLoading(false);
+      }
     }
   };
 
@@ -140,9 +168,24 @@ export default function Machines() {
     setSelectedMachine(null);
   };
 
-  // Si está cargando, mostrar el skeleton completo
+  // Si está cargando, mostrar el skeleton completo con mensaje
   if (loading) {
-    return <MachinesPageSkeleton />;
+    return (
+      <div className="space-y-6">
+        {retryCount > 0 && (
+          <Alert className="bg-blue-50 border-blue-200">
+            <AlertDescription className="flex items-center gap-2">
+              <Loader2 className="h-4 w-4 animate-spin" />
+              <span>
+                Despertando el servidor... (Intento {retryCount}/6) - Esto puede
+                tomar hasta 50 segundos
+              </span>
+            </AlertDescription>
+          </Alert>
+        )}
+        <MachinesPageSkeleton />
+      </div>
+    );
   }
 
   return (
@@ -158,7 +201,11 @@ export default function Machines() {
           </p>
         </div>
         <div className="flex gap-2">
-          <Button variant="outline" onClick={loadMachines} disabled={loading}>
+          <Button
+            variant="outline"
+            onClick={() => loadMachines(false)}
+            disabled={loading}
+          >
             {loading ? (
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
             ) : (
