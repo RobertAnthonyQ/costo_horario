@@ -55,6 +55,8 @@ interface PossessionSummaryResponse {
   numero_escenarios: number;
 }
 
+import { getAuthHeaders } from "@/utils/authUtils";
+
 // Configuración base de la API
 const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:4000";
 const POSSESSION_ENDPOINT = `${API_BASE_URL}/calculos/posesion`;
@@ -118,9 +120,7 @@ class PossessionService {
     try {
       const response = await fetch(POSSESSION_ENDPOINT, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: getAuthHeaders(),
         body: JSON.stringify(data),
       });
 

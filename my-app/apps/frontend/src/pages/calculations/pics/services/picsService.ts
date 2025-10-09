@@ -1,4 +1,5 @@
 import { ApiResponse, PICRecord, RawPICRecord } from "../models/types";
+import { fetchWithAuth } from "@/utils/authUtils";
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:4000";
 const ENDPOINT = `${API_BASE_URL}/modelo-componentes-historico`;
@@ -184,7 +185,7 @@ class PICsService {
   async listAll(): Promise<ApiResponse<PICRecord[]>> {
     try {
       console.log("📡 GET PICs listAll ->", ENDPOINT);
-      const resp = await fetch(ENDPOINT);
+      const resp = await fetchWithAuth(ENDPOINT);
       return await handlePICArrayResponse(resp);
     } catch (e) {
       return netErr(e);
@@ -195,7 +196,7 @@ class PICsService {
     try {
       const url = `${ENDPOINT}/latest-by-modelo/${modeloId}`;
       console.log("📡 GET PICs latestByModelo ->", url);
-      const resp = await fetch(url);
+      const resp = await fetchWithAuth(url);
       return await handlePICArrayResponse(resp);
     } catch (e) {
       return netErr(e);
@@ -206,7 +207,7 @@ class PICsService {
     try {
       const url = `${ENDPOINT}/by-modelo/${modeloId}`;
       console.log("📡 GET PICs byModelo ->", url);
-      const resp = await fetch(url);
+      const resp = await fetchWithAuth(url);
       return await handlePICArrayResponse(resp);
     } catch (e) {
       return netErr(e);
@@ -217,7 +218,7 @@ class PICsService {
     try {
       const url = `${ENDPOINT}/by-componente/${componenteId}`;
       console.log("📡 GET PICs byComponente ->", url);
-      const resp = await fetch(url);
+      const resp = await fetchWithAuth(url);
       return await handlePICArrayResponse(resp);
     } catch (e) {
       return netErr(e);
@@ -235,7 +236,7 @@ class PICsService {
       }).toString();
       const url = `${ENDPOINT}/by-fecha-range?${params}`;
       console.log("📡 GET PICs byFechaRange ->", url);
-      const resp = await fetch(url);
+      const resp = await fetchWithAuth(url);
       return await handlePICArrayResponse(resp);
     } catch (e) {
       return netErr(e);
@@ -296,7 +297,7 @@ class PICsService {
     try {
       const url = `${ENDPOINT}/total-resumen-by-modelo/${modeloId}`;
       console.log("📊 GET PICs getTotalResumenByModelo ->", url);
-      const resp = await fetch(url);
+      const resp = await fetchWithAuth(url);
       return await handleJsonObjectResponse<any>(resp);
     } catch (e) {
       return netErr(e);
@@ -308,7 +309,7 @@ class PICsService {
       const params = modeloId ? `?modeloId=${modeloId}` : "";
       const url = `${ENDPOINT}/resumen-por-componente${params}`;
       console.log("📊 GET PICs getResumenPorComponente ->", url);
-      const resp = await fetch(url);
+      const resp = await fetchWithAuth(url);
       return await handleJsonObjectResponse<any>(resp);
     } catch (e) {
       return netErr(e);

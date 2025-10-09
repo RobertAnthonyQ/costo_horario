@@ -13,6 +13,7 @@ import {
   ApiResponse,
   ApiParam,
   ApiBody,
+  ApiBearerAuth,
 } from '@nestjs/swagger';
 import { PosesionService } from './posesion.service';
 import { CreateCalculoPosesionDto } from './dto/create-calculo-posesion.dto';
@@ -22,6 +23,7 @@ import {
 } from './interfaces/posesion-response.interface';
 
 @ApiTags('Cálculos de Posesión')
+@ApiBearerAuth('JWT-auth')
 @Controller('calculos/posesion')
 export class PosesionController {
   constructor(private readonly posesionService: PosesionService) {}

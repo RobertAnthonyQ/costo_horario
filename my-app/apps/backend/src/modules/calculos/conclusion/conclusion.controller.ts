@@ -8,12 +8,18 @@ import {
   HttpCode,
   HttpStatus,
 } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
+import {
+  ApiTags,
+  ApiOperation,
+  ApiResponse,
+  ApiBearerAuth,
+} from '@nestjs/swagger';
 import { ConclusionService } from './conclusion.service';
 import { CreateAnalisisConclusionDto } from './dto/create-analisis-conclusion.dto';
 import type { ConclusionResponse } from './interfaces/conclusion-response.interface';
 
 @ApiTags('Análisis de Conclusión Comparativa')
+@ApiBearerAuth('JWT-auth')
 @Controller('calculos/conclusion')
 export class ConclusionController {
   constructor(private readonly conclusionService: ConclusionService) {}

@@ -35,15 +35,16 @@ import {
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
 
-const mainItems = [{ title: "Máquinas", url: "/machines", icon: Truck }];
-
-const assetItems = [{ title: "Componentes", url: "/components", icon: Wrench }];
-
-const calculationItems = [
-  { title: "Ratios", url: "/ratios", icon: BarChart3 },
+const assetItems = [
+  { title: "Máquinas", url: "/machines", icon: Truck },
+  { title: "Data Maestra", url: "/components", icon: Wrench },
+  { title: "Ratios de Mantenimiento", url: "/ratios", icon: BarChart3 },
   { title: "PICs", url: "/pics", icon: FileText },
   { title: "Cálculo de Posesión", url: "/possession", icon: Calculator },
   { title: "Informe Costo Horario", url: "/hourly-cost", icon: TrendingUp },
+];
+
+const financialItems = [
   { title: "Flujo de Caja", url: "/cash-flow", icon: DollarSign },
   { title: "Conclusiones", url: "/conclusions", icon: BarChart3 },
 ];
@@ -58,7 +59,7 @@ const configItems = [
 
 interface MenuGroupProps {
   title: string;
-  items: typeof mainItems;
+  items: typeof assetItems;
   isCollapsible?: boolean;
   defaultOpen?: boolean;
 }
@@ -142,7 +143,6 @@ export function AppSidebar() {
       </div>
 
       <SidebarContent>
-        <MenuGroup title="Principal" items={mainItems} />
         <MenuGroup
           title="Gestión de Activos"
           items={assetItems}
@@ -150,8 +150,8 @@ export function AppSidebar() {
           defaultOpen
         />
         <MenuGroup
-          title="Cálculos Financieros"
-          items={calculationItems}
+          title="Evaluación Financiera"
+          items={financialItems}
           isCollapsible
           defaultOpen
         />

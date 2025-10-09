@@ -24,9 +24,31 @@ async function bootstrap() {
   // Configuración de Swagger (OpenAPI)
   const swaggerConfig = new DocumentBuilder()
     .setTitle('Gestión de Activos API')
-    .setDescription('API para gestión de máquinas y activos')
+    .setDescription(
+      'API para gestión de máquinas y activos con autenticación JWT',
+    )
     .setVersion('1.0.0')
-    .addTag('machines', 'Operaciones con máquinas')
+    .addTag(
+      'Autenticación',
+      'Endpoints de autenticación (login, registro, etc.)',
+    )
+    .addTag('Componentes', 'Gestión de componentes')
+    .addTag('Máquinas', 'Gestión de máquinas')
+    .addTag('Modelos', 'Gestión de modelos')
+    .addTag('Marcas', 'Gestión de marcas')
+    .addTag('Cálculos', 'Cálculos de costos')
+    // ✅ Configurar Bearer Authentication
+    .addBearerAuth(
+      {
+        type: 'http',
+        scheme: 'bearer',
+        bearerFormat: 'JWT',
+        name: 'Authorization',
+        description: 'Ingresa tu token JWT (sin el prefijo "Bearer")',
+        in: 'header',
+      },
+      'JWT-auth', // Este es el nombre de la referencia de seguridad
+    )
     .build();
 
   const swaggerDocument = SwaggerModule.createDocument(app, swaggerConfig);

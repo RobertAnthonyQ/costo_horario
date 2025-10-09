@@ -18,12 +18,14 @@ import {
   ApiParam,
   ApiBody,
   ApiQuery,
+  ApiBearerAuth,
 } from '@nestjs/swagger';
 import { RatiosHistoricoService } from './ratios-historico.service';
 import { CreateRatiosHistoricoDto } from './dto/create-ratios-historico.dto';
 import { UpdateRatiosHistoricoDto } from './dto/update-ratios-historico.dto';
 
 @ApiTags('Ratios Histórico')
+@ApiBearerAuth('JWT-auth')
 @Controller('ratios-historico')
 export class RatiosHistoricoController {
   constructor(

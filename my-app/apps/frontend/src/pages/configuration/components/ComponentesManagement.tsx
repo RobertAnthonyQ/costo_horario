@@ -42,7 +42,15 @@ export const ComponentesManagement: React.FC = () => {
   };
 
   const handleEdit = async (id: number, data: UpdateComponenteDto) => {
-    const response = await componentesService.updateComponente(id, data);
+    // Filter only the fields that are allowed in UpdateComponenteDto
+    const filteredData: UpdateComponenteDto = {
+      nombre: data.nombre,
+    };
+
+    const response = await componentesService.updateComponente(
+      id,
+      filteredData
+    );
     if (!response.success) {
       throw new Error(response.error || "Error al actualizar componente");
     }

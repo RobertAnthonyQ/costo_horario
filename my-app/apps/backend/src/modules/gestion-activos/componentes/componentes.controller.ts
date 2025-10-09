@@ -16,12 +16,14 @@ import {
   ApiResponse,
   ApiParam,
   ApiBody,
+  ApiBearerAuth,
 } from '@nestjs/swagger';
 import { ComponentesService } from './componentes.service';
 import { CreateComponenteDto } from './dto/create-componente.dto';
 import { UpdateComponenteDto } from './dto/update-componente.dto';
 
 @ApiTags('Componentes')
+@ApiBearerAuth('JWT-auth') // ✅ Requiere autenticación para todo el controlador
 @Controller('componentes')
 export class ComponentesController {
   constructor(private readonly componentesService: ComponentesService) {}

@@ -16,12 +16,14 @@ import {
   ApiResponse,
   ApiParam,
   ApiBody,
+  ApiBearerAuth,
 } from '@nestjs/swagger';
 import { FlotaService } from './flota.service';
 import { CreateFlotaDto } from './dto/create-flota.dto';
 import { UpdateFlotaDto } from './dto/update-flota.dto';
 
 @ApiTags('Flotas')
+@ApiBearerAuth('JWT-auth')
 @Controller('flotas')
 export class FlotaController {
   constructor(private readonly flotaService: FlotaService) {}

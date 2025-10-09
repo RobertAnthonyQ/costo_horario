@@ -11,6 +11,23 @@ import {
 const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:4000";
 const MACHINES_ENDPOINT = `${API_BASE_URL}/machines`;
 
+// Función para obtener headers con autenticación
+function getAuthHeaders(): HeadersInit {
+  const token = localStorage.getItem("token");
+  const headers: HeadersInit = {
+    "Content-Type": "application/json",
+  };
+
+  if (token) {
+    headers.Authorization = `Bearer ${token}`;
+    console.log("🔑 Token agregado a headers");
+  } else {
+    console.warn("⚠️ No se encontró token en localStorage");
+  }
+
+  return headers;
+}
+
 // Función auxiliar para manejar respuestas de la API
 async function handleApiResponse<T>(
   response: Response
@@ -69,9 +86,7 @@ class MachinesService {
 
       const response = await fetch(MACHINES_ENDPOINT, {
         method: "GET",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: getAuthHeaders(),
       });
 
       console.log("📥 Respuesta recibida:", {
@@ -96,9 +111,7 @@ class MachinesService {
     try {
       const response = await fetch(`${MACHINES_ENDPOINT}/${id}`, {
         method: "GET",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: getAuthHeaders(),
       });
 
       return await handleApiResponse<Machine>(response);
@@ -114,9 +127,7 @@ class MachinesService {
     try {
       const response = await fetch(MACHINES_ENDPOINT, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: getAuthHeaders(),
         body: JSON.stringify(machineData),
       });
 
@@ -134,9 +145,7 @@ class MachinesService {
     try {
       const response = await fetch(`${MACHINES_ENDPOINT}/${id}`, {
         method: "PATCH",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: getAuthHeaders(),
         body: JSON.stringify(machineData),
       });
 
@@ -151,9 +160,7 @@ class MachinesService {
     try {
       const response = await fetch(`${MACHINES_ENDPOINT}/${id}`, {
         method: "DELETE",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: getAuthHeaders(),
       });
 
       return await handleApiResponse<void>(response);
@@ -179,9 +186,7 @@ class MachinesService {
 
       const response = await fetch(url, {
         method: "GET",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: getAuthHeaders(),
       });
 
       return await handleApiResponse<Machine[]>(response);
@@ -195,9 +200,7 @@ class MachinesService {
     try {
       const response = await fetch(`${MACHINES_ENDPOINT}/modelo/${modeloId}`, {
         method: "GET",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: getAuthHeaders(),
       });
 
       return await handleApiResponse<Machine[]>(response);
@@ -211,9 +214,7 @@ class MachinesService {
     try {
       const response = await fetch(`${MACHINES_ENDPOINT}/estado/${estado}`, {
         method: "GET",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: getAuthHeaders(),
       });
 
       return await handleApiResponse<Machine[]>(response);
@@ -227,9 +228,7 @@ class MachinesService {
     try {
       const response = await fetch(`${MACHINES_ENDPOINT}/statistics`, {
         method: "GET",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: getAuthHeaders(),
       });
 
       return await handleApiResponse<MachineStats>(response);

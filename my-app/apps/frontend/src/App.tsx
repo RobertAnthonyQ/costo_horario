@@ -1,4 +1,4 @@
-import { Toaster } from "@/components/ui/toaster";
+﻿import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
@@ -16,47 +16,75 @@ import {
   NotFound,
 } from "./pages";
 import { ConfigurationPage } from "./pages/configuration";
+import { AuthProvider } from "./contexts/AuthContext";
+import { ProtectedRoute } from "./components/auth/ProtectedRoute";
+import LoginPage from "./pages/auth/LoginPage";
+import RegisterPage from "./pages/auth/RegisterPage";
 
 const queryClient = new QueryClient();
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
-    <TooltipProvider>
-      <Toaster />
-      <Sonner />
-      <BrowserRouter>
-        <AppLayout>
+    <AuthProvider>
+      <TooltipProvider>
+        <Toaster />
+        <Sonner />
+        <BrowserRouter>
           <Routes>
-            <Route path="/" element={<Navigate to="/machines" replace />} />
-            <Route path="/machines" element={<Machines />} />
-            <Route path="/models" element={<ConfigurationPage />} />
-            <Route path="/brands" element={<ConfigurationPage />} />
-            <Route path="/components" element={<ConfigurationPage />} />
-            <Route path="/settings" element={<ConfigurationPage />} />
-            <Route path="/configuration" element={<ConfigurationPage />} />
-            <Route path="/possession" element={<PossessionCalculation />} />
-            <Route path="/ratios" element={<RatiosCalculation />} />
-            <Route path="/ratios/compare" element={<RatiosCalculation />} />
-            <Route path="/hourly-cost" element={<HourlyCostReport />} />
-            <Route path="/cash-flow" element={<CashFlowAnalysis />} />
-            <Route path="/pics" element={<PICsCalculation />} />
-            <Route path="/conclusions" element={<ConclusionsPage />} />
+            <Route path="/login" element={<LoginPage />} />
+            <Route path="/register" element={<RegisterPage />} />
             <Route
-              path="/calculation-history"
+              path="*"
               element={
-                <div className="p-8 text-center text-muted-foreground">
-                  Historial de Cálculos - Próximamente
-                </div>
+                <ProtectedRoute>
+                  <AppLayout>
+                    <Routes>
+                      <Route
+                        path="/"
+                        element={<Navigate to="/machines" replace />}
+                      />
+                      <Route path="/machines" element={<Machines />} />
+                      <Route path="/models" element={<ConfigurationPage />} />
+                      <Route path="/brands" element={<ConfigurationPage />} />
+                      <Route
+                        path="/components"
+                        element={<ConfigurationPage />}
+                      />
+                      <Route
+                        path="/configuration"
+                        element={<ConfigurationPage />}
+                      />
+                      <Route
+                        path="/possession"
+                        element={<PossessionCalculation />}
+                      />
+                      <Route path="/ratios" element={<RatiosCalculation />} />
+                      <Route
+                        path="/ratios/compare"
+                        element={<RatiosCalculation />}
+                      />
+                      <Route
+                        path="/hourly-cost"
+                        element={<HourlyCostReport />}
+                      />
+                      <Route path="/cash-flow" element={<CashFlowAnalysis />} />
+                      <Route path="/pics" element={<PICsCalculation />} />
+                      <Route
+                        path="/conclusions"
+                        element={<ConclusionsPage />}
+                      />
+                      <Route path="/reports" element={<Reports />} />
+                      <Route path="/settings" element={<ConfigurationPage />} />
+                      <Route path="*" element={<NotFound />} />
+                    </Routes>
+                  </AppLayout>
+                </ProtectedRoute>
               }
             />
-            <Route path="/reports" element={<Reports />} />
-            <Route path="/settings" element={<ConfigurationPage />} />
-            {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-            <Route path="*" element={<NotFound />} />
           </Routes>
-        </AppLayout>
-      </BrowserRouter>
-    </TooltipProvider>
+        </BrowserRouter>
+      </TooltipProvider>
+    </AuthProvider>
   </QueryClientProvider>
 );
 

@@ -19,12 +19,14 @@ import {
   ApiQuery,
   ApiResponse,
   ApiTags,
+  ApiBearerAuth,
 } from '@nestjs/swagger';
 import { MachinesService } from './machines.service';
 import { CreateMachinesDto } from './dto/create-machines.dto';
 import { UpdateMachinesDto } from './dto/update-machines.dto';
 
 @ApiTags('machines')
+@ApiBearerAuth('JWT-auth')
 @Controller('machines')
 export class MachinesController {
   constructor(private readonly machinesService: MachinesService) {}

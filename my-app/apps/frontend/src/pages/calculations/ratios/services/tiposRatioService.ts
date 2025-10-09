@@ -1,4 +1,5 @@
 import { RatioType } from "../models/types";
+import { getAuthHeaders } from "@/utils/authUtils";
 
 interface ApiResponse<T> {
   success: boolean;
@@ -36,7 +37,9 @@ function netErr(e: any): ApiResponse<any> {
 class TiposRatioService {
   async listAll(): Promise<ApiResponse<RatioType[]>> {
     try {
-      const resp = await fetch(TIPOS_RATIO_ENDPOINT);
+      const resp = await fetch(TIPOS_RATIO_ENDPOINT, {
+        headers: getAuthHeaders(),
+      });
       return await handleApiResponse<RatioType[]>(resp);
     } catch (e) {
       return netErr(e);

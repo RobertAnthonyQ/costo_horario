@@ -1,4 +1,5 @@
 import { RatioVersion } from "../models/types";
+import { getAuthHeaders } from "@/utils/authUtils";
 
 interface ApiResponse<T> {
   success: boolean;
@@ -69,7 +70,7 @@ class RatiosService {
     try {
       const resp = await fetch(RATIOS_ENDPOINT, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: getAuthHeaders(),
         body: JSON.stringify(dto),
       });
       return await handleApiResponse<RatioVersion>(resp);
@@ -80,7 +81,9 @@ class RatiosService {
 
   async listByModelo(modeloId: number): Promise<ApiResponse<RatioVersion[]>> {
     try {
-      const resp = await fetch(`${RATIOS_ENDPOINT}/by-modelo/${modeloId}`);
+      const resp = await fetch(`${RATIOS_ENDPOINT}/by-modelo/${modeloId}`, {
+        headers: getAuthHeaders(),
+      });
       return await handleApiResponse<RatioVersion[]>(resp);
     } catch (e) {
       return netErr(e);
@@ -89,7 +92,9 @@ class RatiosService {
 
   async listByTipo(tipoId: number): Promise<ApiResponse<RatioVersion[]>> {
     try {
-      const resp = await fetch(`${RATIOS_ENDPOINT}/by-tipo-ratio/${tipoId}`);
+      const resp = await fetch(`${RATIOS_ENDPOINT}/by-tipo-ratio/${tipoId}`, {
+        headers: getAuthHeaders(),
+      });
       return await handleApiResponse<RatioVersion[]>(resp);
     } catch (e) {
       return netErr(e);
@@ -105,7 +110,9 @@ class RatiosService {
         fechaDesde: desde,
         fechaHasta: hasta,
       }).toString();
-      const resp = await fetch(`${RATIOS_ENDPOINT}/by-fecha-range?${params}`);
+      const resp = await fetch(`${RATIOS_ENDPOINT}/by-fecha-range?${params}`, {
+        headers: getAuthHeaders(),
+      });
       return await handleApiResponse<RatioVersion[]>(resp);
     } catch (e) {
       return netErr(e);
@@ -143,7 +150,9 @@ class RatiosService {
   async getAllVersionesJson(lugar?: string): Promise<ApiResponse<any[]>> {
     try {
       const params = lugar ? `?lugar=${encodeURIComponent(lugar)}` : "";
-      const resp = await fetch(`${RATIOS_ENDPOINT}/versiones-json${params}`);
+      const resp = await fetch(`${RATIOS_ENDPOINT}/versiones-json${params}`, {
+        headers: getAuthHeaders(),
+      });
       return await handleApiResponse<any[]>(resp);
     } catch (e) {
       return netErr(e);

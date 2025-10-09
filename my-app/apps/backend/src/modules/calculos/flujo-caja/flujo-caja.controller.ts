@@ -9,7 +9,12 @@ import {
   HttpStatus,
   Query,
 } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
+import {
+  ApiTags,
+  ApiOperation,
+  ApiResponse,
+  ApiBearerAuth,
+} from '@nestjs/swagger';
 import { FlujoCajaService } from './flujo-caja.service';
 import { CreateAnalisisFlujoDto } from './dto/create-analisis-flujo.dto';
 import { ExtractEscenariosDto } from './dto/extract-escenarios.dto';
@@ -17,6 +22,7 @@ import { AmortizacionParametrosDto } from './dto/amortizacion-parametros.dto';
 import type { FlujoCajaResponse } from './interfaces/flujo-caja-response.interface';
 
 @ApiTags('Análisis de Flujo de Caja')
+@ApiBearerAuth('JWT-auth')
 @Controller('calculos/flujo-caja')
 export class FlujoCajaController {
   constructor(private readonly flujoCajaService: FlujoCajaService) {}

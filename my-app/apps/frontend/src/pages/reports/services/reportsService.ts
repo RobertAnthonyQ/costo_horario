@@ -1,4 +1,5 @@
 import { ApiResponse, MachineReportData, ReportsStats } from "../models/types";
+import { getAuthHeaders } from "@/utils/authUtils";
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:4000";
 const ENDPOINT = `${API_BASE_URL}/calculos/informe-costo-horario`;
@@ -39,7 +40,9 @@ class ReportsService {
         `${ENDPOINT}/machines/resumen-reports`
       );
 
-      const response = await fetch(`${ENDPOINT}/machines/resumen-reports`);
+      const response = await fetch(`${ENDPOINT}/machines/resumen-reports`, {
+        headers: getAuthHeaders(),
+      });
 
       console.log("📡 Response status:", response.status);
       const result = await handleApiResponse<MachineReportData[]>(response);
@@ -120,7 +123,9 @@ class ReportsService {
         `${ENDPOINT}/machines/latest-reports`
       );
 
-      const response = await fetch(`${ENDPOINT}/machines/latest-reports`);
+      const response = await fetch(`${ENDPOINT}/machines/latest-reports`, {
+        headers: getAuthHeaders(),
+      });
 
       console.log("📡 Response status:", response.status);
       const result = await handleApiResponse<any[]>(response);

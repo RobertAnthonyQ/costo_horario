@@ -18,6 +18,7 @@ import {
   ApiParam,
   ApiBody,
   ApiQuery,
+  ApiBearerAuth,
 } from '@nestjs/swagger';
 import { TiposRatioService } from './tipos-ratio.service';
 import {
@@ -27,6 +28,7 @@ import {
 import { UpdateTiposRatioDto } from './dto/update-tipos-ratio.dto';
 
 @ApiTags('Tipos de Ratio')
+@ApiBearerAuth('JWT-auth')
 @Controller('tipos-ratio')
 export class TiposRatioController {
   constructor(private readonly tiposRatioService: TiposRatioService) {}

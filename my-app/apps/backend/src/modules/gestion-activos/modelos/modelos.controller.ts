@@ -16,12 +16,14 @@ import {
   ApiResponse,
   ApiParam,
   ApiBody,
+  ApiBearerAuth,
 } from '@nestjs/swagger';
 import { ModelosService } from './modelos.service';
 import { CreateModeloDto } from './dto/create-modelo.dto';
 import { UpdateModeloDto } from './dto/update-modelo.dto';
 
 @ApiTags('Modelos')
+@ApiBearerAuth('JWT-auth')
 @Controller('modelos')
 export class ModelosController {
   constructor(private readonly modelosService: ModelosService) {}

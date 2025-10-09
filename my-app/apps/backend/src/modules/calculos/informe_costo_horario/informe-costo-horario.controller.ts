@@ -13,11 +13,13 @@ import {
   ApiBody,
   ApiResponse,
   ApiParam,
+  ApiBearerAuth,
 } from '@nestjs/swagger';
 import { CreateInformeCostoHorarioDto } from './dto/create-informe-costo-horario.dto';
 import { InformeCostoHorarioService } from './informe-costo-horario.service';
 
 @ApiTags('Informe Costo Horario')
+@ApiBearerAuth('JWT-auth')
 @Controller('calculos/informe-costo-horario')
 export class InformeCostoHorarioController {
   constructor(private service: InformeCostoHorarioService) {}

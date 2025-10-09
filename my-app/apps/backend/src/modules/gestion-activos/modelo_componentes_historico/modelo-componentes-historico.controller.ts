@@ -18,12 +18,14 @@ import {
   ApiParam,
   ApiBody,
   ApiQuery,
+  ApiBearerAuth,
 } from '@nestjs/swagger';
 import { ModeloComponentesHistoricoService } from './modelo-componentes-historico.service';
 import { CreateModeloComponentesHistoricoDto } from './dto/create-modelo-componentes-historico.dto';
 import { UpdateModeloComponentesHistoricoDto } from './dto/update-modelo-componentes-historico.dto';
 
 @ApiTags('Modelo Componentes Histórico')
+@ApiBearerAuth('JWT-auth')
 @Controller('modelo-componentes-historico')
 export class ModeloComponentesHistoricoController {
   constructor(

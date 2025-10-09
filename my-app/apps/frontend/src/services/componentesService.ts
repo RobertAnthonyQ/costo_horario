@@ -1,4 +1,5 @@
 import { ApiResponse } from "@/types/api";
+import { getAuthHeaders } from "@/utils/authUtils";
 
 const BASE_URL =
   (import.meta as any).env?.VITE_API_URL || "http://localhost:4000";
@@ -29,7 +30,7 @@ class ComponentesService {
     try {
       const response = await fetch(`${BASE_URL}${endpoint}`, {
         headers: {
-          "Content-Type": "application/json",
+          ...getAuthHeaders(),
           ...options.headers,
         },
         ...options,

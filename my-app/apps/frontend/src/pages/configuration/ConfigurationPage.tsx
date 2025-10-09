@@ -7,18 +7,10 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import {
-  Settings,
-  Package,
-  Truck,
-  Factory,
-  Wrench,
-  BarChart3,
-} from "lucide-react";
+import { Settings, Truck, Factory, Wrench, BarChart3 } from "lucide-react";
 import {
   MarcasManagement,
   EquiposManagement,
-  FlotasManagement,
   ComponentesManagement,
   TiposRatioManagement,
 } from "./components";
@@ -37,8 +29,8 @@ export const ConfigurationPage: React.FC = () => {
         <CardHeader>
           <CardTitle>Gestión de Datos Maestros</CardTitle>
           <CardDescription>
-            Configure y administre las marcas, equipos, flotas, componentes y
-            tipos de ratio de su sistema
+            Configure y administre las marcas, equipos, componentes y tipos de
+            ratio de su sistema
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -47,7 +39,7 @@ export const ConfigurationPage: React.FC = () => {
             onValueChange={setActiveTab}
             className="space-y-4"
           >
-            <TabsList className="grid w-full grid-cols-5">
+            <TabsList className="grid w-full grid-cols-4">
               <TabsTrigger
                 value="marcas"
                 className="flex items-center space-x-2"
@@ -61,13 +53,6 @@ export const ConfigurationPage: React.FC = () => {
               >
                 <Truck className="h-4 w-4" />
                 <span>Equipos</span>
-              </TabsTrigger>
-              <TabsTrigger
-                value="flotas"
-                className="flex items-center space-x-2"
-              >
-                <Package className="h-4 w-4" />
-                <span>Flotas</span>
               </TabsTrigger>
               <TabsTrigger
                 value="componentes"
@@ -91,10 +76,6 @@ export const ConfigurationPage: React.FC = () => {
 
             <TabsContent value="equipos" className="space-y-4">
               <EquiposManagement />
-            </TabsContent>
-
-            <TabsContent value="flotas" className="space-y-4">
-              <FlotasManagement />
             </TabsContent>
 
             <TabsContent value="componentes" className="space-y-4">

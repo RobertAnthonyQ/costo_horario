@@ -4,6 +4,7 @@ import {
   HourlyCostReportResponse,
   PosesionVersion,
 } from "../models/types";
+import { getAuthHeaders } from "@/utils/authUtils";
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:4000";
 const ENDPOINT = `${API_BASE_URL}/calculos/informe-costo-horario`;
@@ -43,7 +44,7 @@ class HourlyCostService {
 
       const response = await fetch(ENDPOINT, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: getAuthHeaders(),
         body: JSON.stringify(input),
       });
 
@@ -68,7 +69,7 @@ class HourlyCostService {
 
       const response = await fetch(`${ENDPOINT}/preview`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: getAuthHeaders(),
         body: JSON.stringify(input),
       });
 
@@ -88,7 +89,9 @@ class HourlyCostService {
     id: number
   ): Promise<ApiResponse<HourlyCostReportResponse>> {
     try {
-      const response = await fetch(`${ENDPOINT}/${id}`);
+      const response = await fetch(`${ENDPOINT}/${id}`, {
+        headers: getAuthHeaders(),
+      });
       return await handleApiResponse<HourlyCostReportResponse>(response);
     } catch (error) {
       return handleNetworkError(error);
@@ -99,7 +102,9 @@ class HourlyCostService {
     machineId: number
   ): Promise<ApiResponse<HourlyCostReportResponse[]>> {
     try {
-      const response = await fetch(`${ENDPOINT}/machine/${machineId}`);
+      const response = await fetch(`${ENDPOINT}/machine/${machineId}`, {
+        headers: getAuthHeaders(),
+      });
       return await handleApiResponse<HourlyCostReportResponse[]>(response);
     } catch (error) {
       return handleNetworkError(error);

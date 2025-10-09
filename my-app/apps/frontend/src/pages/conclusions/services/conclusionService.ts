@@ -1,4 +1,5 @@
 import type { ApiResponse } from "../../reports/models/types";
+import { getAuthHeaders } from "@/utils/authUtils";
 
 // Tipos alineados al backend
 export interface DatosAdicionalesMaquina {
@@ -136,7 +137,7 @@ export class ConclusionService {
   ): Promise<ApiResponse<ConclusionResponse>> {
     const res = await fetch(`${ENDPOINT}/analizar`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: getAuthHeaders(),
       body: JSON.stringify(payload),
     });
     return handleApiResponse<ConclusionResponse>(res);
@@ -154,19 +155,26 @@ export class ConclusionService {
   }
 
   async getTodos(): Promise<ApiResponse<any[]>> {
-    const res = await fetch(`${ENDPOINT}/todos`);
+    const res = await fetch(`${ENDPOINT}/todos`, {
+      headers: getAuthHeaders(),
+    });
     return handleApiResponse<any[]>(res);
   }
 
   async getById(id: number): Promise<ApiResponse<ConclusionResponse>> {
-    const res = await fetch(`${ENDPOINT}/${id}`);
+    const res = await fetch(`${ENDPOINT}/${id}`, {
+      headers: getAuthHeaders(),
+    });
     return handleApiResponse<ConclusionResponse>(res);
   }
 
   async guardar(data: ConclusionResponse): Promise<ApiResponse<any>> {
     const res = await fetch(`${ENDPOINT}/guardar`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json",
+        ...getAuthHeaders(),
+      },
       body: JSON.stringify(data),
     });
     return handleApiResponse<any>(res);

@@ -1,6 +1,7 @@
 import { Controller, Get } from '@nestjs/common';
 import { AppService } from './app.service';
 import { SupabaseService } from './supabase/supabase.service';
+import { Public } from './modules/auth/decorators/public.decorator';
 
 @Controller()
 export class AppController {
@@ -9,11 +10,13 @@ export class AppController {
     private readonly supabaseService: SupabaseService,
   ) {}
 
+  @Public() // ✅ Ruta pública
   @Get()
   getHello(): string {
     return this.appService.getHello();
   }
 
+  @Public() // ✅ Ruta pública para health check
   @Get('health')
   getHealth() {
     return {
@@ -23,6 +26,7 @@ export class AppController {
     };
   }
 
+  @Public() // ✅ Ruta pública para verificar configuración
   @Get('config')
   getConfig() {
     return {
@@ -42,6 +46,7 @@ export class AppController {
     };
   }
 
+  @Public() // ✅ Ruta pública para test de base de datos
   @Get('test-db')
   async testDatabase() {
     try {

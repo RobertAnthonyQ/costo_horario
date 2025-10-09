@@ -4,6 +4,7 @@ import {
   FlujoCajaResponse,
   FlujoCajaVersion,
 } from "../models/types";
+import { getAuthHeaders } from "@/utils/authUtils";
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:4000";
 const ENDPOINT = `${API_BASE_URL}/calculos/flujo-caja`;
@@ -67,7 +68,7 @@ class FlujoCajaService {
 
       const response = await fetch(`${ENDPOINT}/preview`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: getAuthHeaders(),
         body: JSON.stringify(input),
       });
 
@@ -94,7 +95,7 @@ class FlujoCajaService {
 
       const response = await fetch(`${ENDPOINT}/guardar`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: getAuthHeaders(),
         body: JSON.stringify(input),
       });
 
@@ -122,7 +123,9 @@ class FlujoCajaService {
 
       console.log("🌐 Obteniendo versiones desde:", url);
 
-      const response = await fetch(url);
+      const response = await fetch(url, {
+        headers: getAuthHeaders(),
+      });
       const result = await handleApiResponse<FlujoCajaVersion[]>(response);
 
       console.log("📊 Versiones recibidas:", result);
@@ -138,7 +141,9 @@ class FlujoCajaService {
    */
   async getAnalisisById(id: number): Promise<ApiResponse<FlujoCajaResponse>> {
     try {
-      const response = await fetch(`${ENDPOINT}/${id}`);
+      const response = await fetch(`${ENDPOINT}/${id}`, {
+        headers: getAuthHeaders(),
+      });
       return await handleApiResponse<FlujoCajaResponse>(response);
     } catch (error) {
       return handleNetworkError(error);
@@ -150,7 +155,9 @@ class FlujoCajaService {
    */
   async getTodosAnalisis(): Promise<ApiResponse<FlujoCajaResponse[]>> {
     try {
-      const response = await fetch(`${ENDPOINT}/todos`);
+      const response = await fetch(`${ENDPOINT}/todos`, {
+        headers: getAuthHeaders(),
+      });
       return await handleApiResponse<FlujoCajaResponse[]>(response);
     } catch (error) {
       return handleNetworkError(error);
