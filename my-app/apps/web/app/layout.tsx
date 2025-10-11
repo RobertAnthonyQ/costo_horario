@@ -13,7 +13,7 @@ const geistMono = localFont({
 });
 
 export const metadata: Metadata = {
-  title: "CostTracker - Gestión de Costos",
+  title: "Business Case Investment - Gestión de Costos",
   description:
     "Sistema de gestión de cálculo de costos horarios para maquinaria pesada",
 };

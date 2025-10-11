@@ -135,7 +135,9 @@ export function AppSidebar() {
           <Building className="h-8 w-8 text-primary" />
           {!isCollapsed && (
             <div>
-              <h2 className="font-bold text-lg text-foreground">CostTracker</h2>
+              <h2 className="font-bold text-lg text-foreground">
+                Business Case Investment
+              </h2>
               <p className="text-xs text-muted-foreground">Gestión de Costos</p>
             </div>
           )}

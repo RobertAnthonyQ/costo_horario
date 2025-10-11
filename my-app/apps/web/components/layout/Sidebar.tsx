@@ -28,11 +28,11 @@ export function Sidebar({ children }: SidebarProps) {
       {/* Logo */}
       <div className="flex items-center gap-3 px-5 h-16 border-b border-sidebar-border">
         <div className="inline-flex h-9 w-9 items-center justify-center rounded-lg bg-gradient-primary text-white font-bold shadow-custom-sm">
-          CT
+          BCI
         </div>
         <div className="leading-tight">
           <h1 className="text-base font-semibold text-sidebar-foreground">
-            CostTracker
+            Business Case Investment
           </h1>
           <p className="text-xs text-sidebar-foreground/70">
             Gestión de Costos
