@@ -92,7 +92,9 @@ export default function LoginPage() {
               </svg>
             </div>
           </div>
-          <CardTitle className="text-2xl font-bold">Costo Horario</CardTitle>
+          <CardTitle className="text-2xl font-bold">
+            Business Case Investment
+          </CardTitle>
           <CardDescription>
             Ingresa tus credenciales para acceder
           </CardDescription>
