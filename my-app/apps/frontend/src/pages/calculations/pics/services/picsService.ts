@@ -259,7 +259,7 @@ class PICsService {
         fecha_efectiva: input.fecha_efectiva || new Date().toISOString(),
       };
       console.log("🆕 POST PICs createRecord ->", body);
-      const resp = await fetch(ENDPOINT, {
+      const resp = await fetchWithAuth(ENDPOINT, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(body),
@@ -282,7 +282,7 @@ class PICsService {
         return { success: false, error: "Sin cambios" };
       }
       console.log("✏️ PATCH PICs updateRecord ->", id, body);
-      const resp = await fetch(`${ENDPOINT}/${id}`, {
+      const resp = await fetchWithAuth(`${ENDPOINT}/${id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(body),
@@ -311,6 +311,18 @@ class PICsService {
       console.log("📊 GET PICs getResumenPorComponente ->", url);
       const resp = await fetchWithAuth(url);
       return await handleJsonObjectResponse<any>(resp);
+    } catch (e) {
+      return netErr(e);
+    }
+  }
+
+  async deleteRecord(id: number): Promise<ApiResponse<PICRecord>> {
+    try {
+      console.log("🗑️ DELETE PICs deleteRecord ->", id);
+      const resp = await fetchWithAuth(`${ENDPOINT}/${id}`, {
+        method: "DELETE",
+      });
+      return await handleApiResponse<PICRecord>(resp);
     } catch (e) {
       return netErr(e);
     }

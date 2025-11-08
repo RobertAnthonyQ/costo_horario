@@ -1,8 +1,7 @@
 import { useState, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { picsService } from "./services/picsService";
-import { PICsTable } from "./components";
-import { PICsEditorPanel } from "./components/PICsEditorPanel";
+import { PICsTable, PICsEditorPanel } from "./components";
 import { machinesService } from "../../machines/services/machinesService";
 import {
   Select,
@@ -53,7 +52,8 @@ const PICsPage: React.FC = () => {
   } = useQuery({
     queryKey: ["pics", "by-modelo", selectedModeloId],
     queryFn: () => picsService.byModelo(selectedModeloId as number),
-    enabled: loadedMachines && !!selectedModeloId, // solo cargar cuando el usuario seleccionó máquina
+    enabled: !!selectedModeloId, // solo cargar cuando hay modelo seleccionado
+    staleTime: 30000, // considerar datos frescos por 30 segundos
   });
 
   const records = recordsResp?.data || [];
@@ -63,6 +63,7 @@ const PICsPage: React.FC = () => {
     queryFn: () =>
       picsService.getTotalResumenByModelo(selectedModeloId as number),
     enabled: !!selectedModeloId,
+    staleTime: 30000,
   });
   const resumenTotal = resumenResp?.data?.resumen_total ?? resumenResp?.data;
   const hasFilter = Boolean(selectedModeloId);

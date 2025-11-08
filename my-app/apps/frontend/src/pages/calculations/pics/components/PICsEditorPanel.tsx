@@ -11,7 +11,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Loader2 } from "lucide-react";
+import { Loader2, Trash2 } from "lucide-react";
 import { componentesService, Componente } from "@/services/componentesService";
 
 interface Props {
@@ -69,7 +69,20 @@ export const PICsEditorPanel: React.FC<Props> = ({ modeloId }) => {
         monto_usd: vars.monto_usd,
       });
     },
-    onSettled: () => {
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["pics", "by-modelo", modeloId] });
+      qc.invalidateQueries({
+        queryKey: ["pics", "latest-by-modelo", modeloId],
+      });
+      qc.invalidateQueries({
+        queryKey: ["pics", "total-resumen-by-modelo", modeloId],
+      });
+    },
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: (id: number) => picsService.deleteRecord(id),
+    onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["pics", "by-modelo", modeloId] });
       qc.invalidateQueries({
         queryKey: ["pics", "latest-by-modelo", modeloId],
@@ -191,16 +204,28 @@ export const PICsEditorPanel: React.FC<Props> = ({ modeloId }) => {
     ) {
       return;
     }
-    mutation.mutate({
-      modelo_id: modeloId,
-      componente_id: Number(newCompId),
-      pcr: pcrVal,
-      monto_usd: montoVal,
-      isNew: true,
-    });
-    setNewCompId("");
-    setNewPcr("");
-    setNewMonto("");
+    mutation.mutate(
+      {
+        modelo_id: modeloId,
+        componente_id: Number(newCompId),
+        pcr: pcrVal,
+        monto_usd: montoVal,
+        isNew: true,
+      },
+      {
+        onSuccess: () => {
+          setNewCompId("");
+          setNewPcr("");
+          setNewMonto("");
+        },
+      }
+    );
+  };
+
+  const handleDelete = (id: number) => {
+    if (confirm("¿Estás seguro de eliminar este componente del modelo?")) {
+      deleteMutation.mutate(id);
+    }
   };
 
   return (
@@ -219,7 +244,8 @@ export const PICsEditorPanel: React.FC<Props> = ({ modeloId }) => {
               <th className="py-1 pr-2">Componente</th>
               <th className="py-1 pr-2 text-right">PCR</th>
               <th className="py-1 pr-2 text-right">Monto USD</th>
-              <th className="py-1 pr-2 text-right">&nbsp;</th>
+              <th className="py-1 pr-2 text-right">Estado</th>
+              <th className="py-1 pr-2 text-center">Acciones</th>
             </tr>
           </thead>
           <tbody>
@@ -235,7 +261,7 @@ export const PICsEditorPanel: React.FC<Props> = ({ modeloId }) => {
               return (
                 <tr key={r.id} className="border-b last:border-b-0">
                   <td
-                    className="py-1 pr-2 whitespace-nowrap max-w-[140px] truncate"
+                    className="py-1 pr-2 whitespace-nowrap max-w-[120px] truncate"
                     title={r.componente?.nombre}
                   >
                     <span className="flex items-center gap-1">
@@ -272,13 +298,25 @@ export const PICsEditorPanel: React.FC<Props> = ({ modeloId }) => {
                       </span>
                     )}
                   </td>
+                  <td className="py-1 text-center">
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      className="h-6 w-6 p-0 hover:bg-destructive/10 hover:text-destructive"
+                      onClick={() => handleDelete(r.id)}
+                      disabled={deleteMutation.isPending}
+                      title="Eliminar componente"
+                    >
+                      <Trash2 className="h-3 w-3" />
+                    </Button>
+                  </td>
                 </tr>
               );
             })}
             {mergedRows.length === 0 && !isLoading && !loadingComponentes && (
               <tr>
                 <td
-                  colSpan={4}
+                  colSpan={5}
                   className="py-4 text-center text-muted-foreground"
                 >
                   Sin componentes

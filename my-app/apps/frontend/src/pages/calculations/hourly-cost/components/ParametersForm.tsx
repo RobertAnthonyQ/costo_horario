@@ -178,7 +178,7 @@ export function ParametersForm({
               </div>
 
               <div>
-                <Label>Tasa financiamiento</Label>
+                <Label>Tasa financiamiento (decimales)</Label>
                 <Input
                   type="number"
                   step="0.0001"
@@ -191,6 +191,9 @@ export function ParametersForm({
                     })
                   }
                 />
+                <p className="text-xs text-muted-foreground mt-1">
+                  ejemplo: (0.10)
+                </p>
               </div>
 
               <div>
@@ -256,7 +259,7 @@ export function ParametersForm({
               </div>
 
               <div>
-                <Label>Mano de Obra Técnico (Índice)</Label>
+                <Label>Mano de Obra Técnico (Decimales)</Label>
                 <Input
                   type="number"
                   step="0.01"
@@ -273,8 +276,7 @@ export function ParametersForm({
                   }
                 />
                 <p className="text-xs text-muted-foreground mt-1">
-                  Índice multiplicador (ej: 0.10 = 10% sobre la suma de
-                  mantenimientos)
+                  ejemplo: (0.10)
                 </p>
               </div>
 
