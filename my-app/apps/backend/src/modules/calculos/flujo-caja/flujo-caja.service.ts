@@ -284,7 +284,6 @@ export class FlujoCajaService {
       correctivo: 0,
       neumaticos: 0,
       elementosDesgaste: 0,
-      soldadura: 0,
       manoDeObraSupervision: 0,
     };
 
@@ -297,10 +296,9 @@ export class FlujoCajaService {
 
       mantenimiento = {
         preventivo: Number(seccion4.mantenimientoPreventivo || 0),
-        correctivo: Number(seccion4.mantenimientoCorrectivo || 0),
+        correctivo: Number(seccion4.mantenimientoCorrectivo || 0), // Ya incluye soldadura
         neumaticos: Number(seccion4.neumaticos || 0),
         elementosDesgaste: Number(seccion4.elementosDesgaste || 0),
-        soldadura: Number(seccion4.estructural || 0),
         manoDeObraSupervision: Number(seccion4.manoDeObraTecnico || 0),
       };
 
@@ -338,7 +336,6 @@ export class FlujoCajaService {
         correctivo: Number(mantenimiento.correctivo),
         neumaticos: Number(mantenimiento.neumaticos),
         elementosDesgaste: Number(mantenimiento.elementosDesgaste),
-        soldadura: Number(mantenimiento.soldadura),
         manoDeObraSupervision: Number(mantenimiento.manoDeObraSupervision),
       },
       primaSeguroTrec: Number(primaSeguroTrec),
@@ -393,7 +390,7 @@ export class FlujoCajaService {
         // Valores por defecto que puede modificar el usuario
         porcentajeResidual: Number(dto.porcentajeResidual || 0.1), // 10% por defecto
         margenInterno: Number(dto.margenInterno || 0.05), // 5% por defecto
-        gastosGeneralesMantenimiento: gastosGeneralesCalculados, // Valor calculado del porcentaje
+        gastosGeneralesMantenimiento: porcentajeGastosGenerales, // Guardar el porcentaje original (ej: 0.05 = 5%)
         horasOperativasMes: Number(
           dto.horasOperativasMes || escenariosHoras[0]?.horasMinimas || 300,
         ),
@@ -456,8 +453,8 @@ export class FlujoCajaService {
       datosPrecargados.mantenimiento.correctivo +
       datosPrecargados.mantenimiento.neumaticos +
       datosPrecargados.mantenimiento.elementosDesgaste +
-      datosPrecargados.mantenimiento.soldadura +
       datosPrecargados.mantenimiento.manoDeObraSupervision;
+
     const gastosgenerales =
       Number(dto.gastosGeneralesMantenimiento) *
       (datosPrecargados.mantenimiento.preventivo +
@@ -597,15 +594,16 @@ export class FlujoCajaService {
           totalPosesionMantenimientoBase:
             totalPosesionMantenimientoSeleccionado, // Valor base del escenario seleccionado
           preventivo: datosPrecargados.mantenimiento.preventivo,
-          correctivo: datosPrecargados.mantenimiento.correctivo,
+          correctivo: datosPrecargados.mantenimiento.correctivo, // Ya incluye soldadura
           neumaticos: datosPrecargados.mantenimiento.neumaticos,
           elementosDesgaste: datosPrecargados.mantenimiento.elementosDesgaste,
-          soldadura: datosPrecargados.mantenimiento.soldadura,
           manoDeObraSupervision:
             datosPrecargados.mantenimiento.manoDeObraSupervision,
           gastosGeneralesdeMantenimiento: gastodemantenimiento,
           gastosgenerales: gastosgenerales,
           seguro: seguroTrecSeleccionado, // Seguro TREC del escenario seleccionado
+          egresosTotales:
+            gastodemantenimiento + gastosgenerales + seguroTrecSeleccionado, // Suma total de egresos por hora
           // Generar escenarios por años (solo años operativos, sin año 0)
           escenariosAnuales: Array.from(
             { length: aniosParaEscenarios },
@@ -745,11 +743,6 @@ export class FlujoCajaService {
                   datosPrecargados.mantenimiento.elementosDesgaste *
                   horasOperativasMes *
                   mesesDelAnio,
-                soldadura:
-                  -1 *
-                  datosPrecargados.mantenimiento.soldadura *
-                  horasOperativasMes *
-                  mesesDelAnio,
                 manoDeObraSupervision:
                   -1 *
                   datosPrecargados.mantenimiento.manoDeObraSupervision *
@@ -879,19 +872,6 @@ export class FlujoCajaService {
                 return (
                   -1 *
                   datosPrecargados.mantenimiento.elementosDesgaste *
-                  horasOperativasMes *
-                  mesesDelAnio
-                );
-              },
-            ).reduce((sum, valor) => sum + valor, 0),
-            totalSoldadura: Array.from(
-              { length: aniosParaEscenarios },
-              (_, index) => {
-                const anioActual = index + 1;
-                const mesesDelAnio = calcularMesesDelAnio(anioActual);
-                return (
-                  -1 *
-                  datosPrecargados.mantenimiento.soldadura *
                   horasOperativasMes *
                   mesesDelAnio
                 );
@@ -1121,9 +1101,6 @@ export class FlujoCajaService {
     );
     console.log(
       `[FLUJO-CAJA] TOTAL Elementos desgaste: $${Math.abs(resumen.totalElementosDesgaste).toLocaleString()}`,
-    );
-    console.log(
-      `[FLUJO-CAJA] TOTAL Soldadura: $${Math.abs(resumen.totalSoldadura).toLocaleString()}`,
     );
     console.log(
       `[FLUJO-CAJA] TOTAL Mano obra supervisión: $${Math.abs(resumen.totalManoObraSupervision).toLocaleString()}`,
@@ -1931,7 +1908,7 @@ export class FlujoCajaService {
     };
 
     // Generar flujos por año
-    const aniosReporte = Array.from({ length:   aniosMaximos }, (_, index) => {
+    const aniosReporte = Array.from({ length: aniosMaximos }, (_, index) => {
       const anioActual = index + 1;
 
       // FLUJO DE CAJA DE OPERACIÓN

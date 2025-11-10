@@ -53,16 +53,17 @@ export function ParametersForm({
   onViewVersionDetails,
   onViewAmortizacion,
 }: ParametersFormProps) {
-  // Helper para manejar conversión de porcentajes sin problemas de precisión
-  const handlePercentageChange = (value: string, field: string) => {
+  // Helper para manejar valores decimales directos
+  const handleDecimalChange = (value: string, field: string) => {
     if (value === "") {
       onParamsChange({ ...params, [field]: 0 });
       return;
     }
 
-    // Redondear a 2 decimales para evitar problemas de precisión
-    const numValue = Math.round(parseFloat(value) * 100) / 10000;
-    onParamsChange({ ...params, [field]: numValue });
+    const numValue = parseFloat(value);
+    if (!isNaN(numValue)) {
+      onParamsChange({ ...params, [field]: numValue });
+    }
   };
 
   // Helper para manejar números enteros
@@ -76,11 +77,6 @@ export function ParametersForm({
     if (!isNaN(numValue)) {
       onParamsChange({ ...params, [field]: numValue });
     }
-  };
-
-  // Helper para formatear valores de porcentaje
-  const formatPercentage = (value: number): string => {
-    return (Math.round(value * 10000) / 100).toString();
   };
   return (
     <Card>
@@ -203,56 +199,56 @@ export function ParametersForm({
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               <div>
-                <Label>Porcentaje Residual (%)</Label>
+                <Label>Porcentaje Residual (decimal)</Label>
                 <Input
                   type="number"
                   step="0.01"
                   min="0"
-                  max="100"
-                  value={formatPercentage(params.porcentajeResidual)}
+                  max="1"
+                  value={params.porcentajeResidual}
                   onChange={(e) =>
-                    handlePercentageChange(e.target.value, "porcentajeResidual")
+                    handleDecimalChange(e.target.value, "porcentajeResidual")
                   }
                 />
                 <p className="text-xs text-muted-foreground mt-1">
-                  Valor residual del activo (ej: 10%)
+                  Valor residual del activo (ej: 0.10 = 10%)
                 </p>
               </div>
 
               <div>
-                <Label>Margen Interno (%)</Label>
+                <Label>Margen Interno (decimal)</Label>
                 <Input
                   type="number"
                   step="0.01"
                   min="0"
-                  max="100"
-                  value={formatPercentage(params.margenInterno)}
+                  max="1"
+                  value={params.margenInterno}
                   onChange={(e) =>
-                    handlePercentageChange(e.target.value, "margenInterno")
+                    handleDecimalChange(e.target.value, "margenInterno")
                   }
                 />
                 <p className="text-xs text-muted-foreground mt-1">
-                  Margen de ganancia esperado (ej: 5%)
+                  Margen de ganancia esperado (ej: 0.05 = 5%)
                 </p>
               </div>
 
               <div>
-                <Label>Gastos Generales Mantenimiento (%)</Label>
+                <Label>Gastos Generales Mantenimiento (decimal)</Label>
                 <Input
                   type="number"
                   step="0.01"
                   min="0"
-                  max="100"
-                  value={formatPercentage(params.gastosGeneralesMantenimiento)}
+                  max="1"
+                  value={params.gastosGeneralesMantenimiento}
                   onChange={(e) =>
-                    handlePercentageChange(
+                    handleDecimalChange(
                       e.target.value,
                       "gastosGeneralesMantenimiento"
                     )
                   }
                 />
                 <p className="text-xs text-muted-foreground mt-1">
-                  Gastos generales sobre mantenimiento (ej: 5%)
+                  Gastos generales sobre mantenimiento (ej: 0.05 = 5%)
                 </p>
               </div>
 
@@ -272,22 +268,19 @@ export function ParametersForm({
               </div>
 
               <div>
-                <Label>Tasa de Descuento Empresa (%)</Label>
+                <Label>Tasa de Descuento Empresa (decimal)</Label>
                 <Input
                   type="number"
                   step="0.01"
                   min="0"
-                  max="100"
-                  value={formatPercentage(params.tasaDescuentoEmpresa)}
+                  max="1"
+                  value={params.tasaDescuentoEmpresa}
                   onChange={(e) =>
-                    handlePercentageChange(
-                      e.target.value,
-                      "tasaDescuentoEmpresa"
-                    )
+                    handleDecimalChange(e.target.value, "tasaDescuentoEmpresa")
                   }
                 />
                 <p className="text-xs text-muted-foreground mt-1">
-                  Tasa de descuento para el VAN (ej: 8%)
+                  Tasa de descuento para el VAN (ej: 0.08 = 8%)
                 </p>
               </div>
 

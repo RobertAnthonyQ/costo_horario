@@ -27,10 +27,9 @@ export interface DatosPrecargadosInforme {
   totalPosesionMantenimiento: number;
   mantenimiento: {
     preventivo: number;
-    correctivo: number;
+    correctivo: number; // Ya incluye soldadura
     neumaticos: number;
     elementosDesgaste: number;
-    soldadura: number;
     manoDeObraSupervision: number;
   };
   primaSeguroTrec: number;

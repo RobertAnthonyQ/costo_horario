@@ -749,10 +749,8 @@ export function ReportDisplay({
                         Egresos Totales
                       </td>
                       <td className="border border-gray-300 p-2 text-center bg-green-700 text-white font-bold">
-                        {formatNumber(
-                          flujoOperacion.totalPosesionMantenimientoBase,
-                          2
-                        )}
+                        {formatNumber(flujoOperacion.egresosTotales || 0, 2)}
+                        /hr
                       </td>
                       {aniosOperativos.map((anio: any) => (
                         <td
@@ -778,7 +776,7 @@ export function ReportDisplay({
                       </td>
                       <td className="border border-gray-300 p-2 text-center">
                         {formatNumber(
-                          flujoOperacion.totalPosesionMantenimientoBase,
+                          flujoOperacion.gastosGeneralesdeMantenimiento,
                           2
                         )}
                       </td>
@@ -917,35 +915,6 @@ export function ReportDisplay({
                       </td>
                     </tr>
 
-                    {/* Soldadura */}
-                    <tr className="bg-gray-50">
-                      <td className="border border-gray-300 p-2 pl-12">
-                        Soldadura
-                      </td>
-                      <td className="border border-gray-300 p-2 text-center bg-green-500 text-white font-bold">
-                        {formatNumber(
-                          getMantenimientoUnitario("soldadura", 0),
-                          2
-                        )}
-                        /hr
-                      </td>
-                      {aniosOperativos.map((anio: any) => (
-                        <td
-                          key={anio.anio}
-                          className="border border-gray-300 p-2 text-right text-red-600"
-                        >
-                          {formatNumber(anio.soldadura, 0)}
-                        </td>
-                      ))}
-                      <td className="border border-gray-300 p-2 text-right bg-gray-200 text-red-600">
-                        {formatNumber(
-                          flujoOperacion.resumenFlujoCajaOperacion
-                            ?.totalSoldadura || 0,
-                          0
-                        )}
-                      </td>
-                    </tr>
-
                     {/* Mano de Obra / Supervisión */}
                     <tr className="bg-white">
                       <td className="border border-gray-300 p-2 pl-12">
@@ -978,10 +947,7 @@ export function ReportDisplay({
                         Gastos generales
                       </td>
                       <td className="border border-gray-300 p-2 text-center bg-red-600 text-white font-bold">
-                        {formatNumber(
-                          flujoOperacion.gastosGeneralesdeMantenimiento,
-                          2
-                        )}
+                        {formatNumber(flujoOperacion.gastosgenerales, 2)}
                       </td>
                       {aniosOperativos.map((anio: any) => (
                         <td
@@ -1006,10 +972,7 @@ export function ReportDisplay({
                         GGC / Otros
                       </td>
                       <td className="border border-gray-300 p-2 text-center bg-red-600 text-white font-bold">
-                        {formatNumber(
-                          flujoOperacion.gastosGeneralesdeMantenimiento,
-                          2
-                        )}
+                        {formatNumber(flujoOperacion.gastosgenerales, 2)}
                         /hr
                       </td>
                       {aniosOperativos.map((anio: any) => (

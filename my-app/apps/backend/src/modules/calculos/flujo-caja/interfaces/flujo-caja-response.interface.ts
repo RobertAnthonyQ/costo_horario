@@ -21,10 +21,9 @@ export interface DatosPrecargadosInforme {
   // Desglose de mantenimiento (Sección 4 del informe)
   mantenimiento: {
     preventivo: number; // lubricantes + filtros + materiales ferretería
-    correctivo: number; // materiales eléctricos + mangueras + menores + mayores
+    correctivo: number; // materiales eléctricos + mangueras + menores + mayores + estructural (soldadura ya incluida)
     neumaticos: number;
     elementosDesgaste: number; // gets
-    soldadura: number; // estructural
     manoDeObraSupervision: number; // mano_de_obra_tecnico o calculado
   };
 
